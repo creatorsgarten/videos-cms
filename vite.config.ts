@@ -9,6 +9,9 @@ import tailwindcss from '@tailwindcss/vite'
 
 const config = defineConfig({
   base: '/videos-cms/',
+  server: {
+    port: 39761,
+  },
   test: {
     exclude: ['e2e/**', 'node_modules/**'],
   },

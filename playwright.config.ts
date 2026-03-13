@@ -7,7 +7,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   reporter: 'html',
   use: {
-    baseURL: 'http://localhost:3000/videos-cms/',
+    baseURL: 'http://localhost:39761/videos-cms/',
     trace: 'on-first-retry',
   },
   projects: [
@@ -18,7 +18,7 @@ export default defineConfig({
   ],
   webServer: {
     command: 'pnpm dev',
-    url: 'http://localhost:3000/videos-cms/',
+    url: 'http://localhost:39761/videos-cms/',
     reuseExistingServer: !process.env.CI,
   },
 })
