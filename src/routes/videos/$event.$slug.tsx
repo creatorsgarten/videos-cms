@@ -6,6 +6,14 @@ import yaml from 'js-yaml'
 import { z } from 'zod'
 import { CheckCircle, Loader2, AlertCircle, Upload, Trash2 } from 'lucide-react'
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '#/components/ui/dialog'
+import { Button } from '#/components/ui/button'
+import {
   videosCollection,
   getVideoById,
   saveVideo,
@@ -727,17 +735,11 @@ function ChaptersModal({
   setError: (err: string) => void
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="max-h-[90vh] w-full max-w-2xl overflow-auto rounded-lg bg-[var(--header-bg)] p-6 shadow-lg">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Edit Chapters</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
-          >
-            ✕
-          </button>
-        </div>
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit Chapters</DialogTitle>
+        </DialogHeader>
 
         <form.Field
           name="chaptersYaml"
@@ -785,34 +787,33 @@ function ChaptersModal({
               {f.state.meta.errors.length > 0 && (
                 <FieldError errors={f.state.meta.errors} />
               )}
-
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="rounded-md border px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (f.state.meta.errors.length > 0) {
-                      setError('Fix validation errors before saving')
-                      return
-                    }
-                    onSave()
-                  }}
-                  className="rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
-                >
-                  Save
-                </button>
-              </div>
             </div>
           )}
         />
-      </div>
-    </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <form.Field
+            name="chaptersYaml"
+            children={(f: any) => (
+              <Button
+                onClick={() => {
+                  if (f.state.meta.errors.length > 0) {
+                    setError('Fix validation errors before saving')
+                    return
+                  }
+                  onSave()
+                }}
+              >
+                Save
+              </Button>
+            )}
+          />
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 
