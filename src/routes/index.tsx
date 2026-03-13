@@ -28,6 +28,7 @@ function HomePage() {
       id: v.id,
       event: v.event,
       published: v.data.published,
+      publishedDate: typeof v.data.published === 'string' ? v.data.published : undefined,
     })),
   )
 
@@ -75,16 +76,25 @@ function HomePage() {
   const hasVideos = (videos?.length ?? 0) > 0
 
   // Group by event for the event index
-  const grouped = (videos ?? []).reduce<
-    Record<string, { total: number; published: number }>
-  >((acc, v) => {
-    acc[v.event] ??= { total: 0, published: 0 }
-    acc[v.event].total++
+  type EventStats = { total: number; published: number; lastPublishedDate: string | null }
+  const grouped = (videos ?? []).reduce<Record<string, EventStats>>((acc, v) => {
+    if (!acc[v.event]) {
+      acc[v.event] = { total: 0, published: 0, lastPublishedDate: null }
+    }
+    const eventStats = acc[v.event]!
+    eventStats.total++
     if (v.published === true || typeof v.published === 'string') {
-      acc[v.event].published++
+      eventStats.published++
+      // Track the latest published date
+      if (v.publishedDate) {
+        const current = eventStats.lastPublishedDate
+        if (!current || v.publishedDate > current) {
+          eventStats.lastPublishedDate = v.publishedDate as string
+        }
+      }
     }
     return acc
-  }, {})
+  }, {} as Record<string, EventStats>)
 
   return (
     <main className="page-wrap px-4 py-12">
@@ -157,7 +167,24 @@ function HomePage() {
 
           <div className="divide-y rounded-lg border">
             {Object.entries(grouped)
-              .sort(([a], [b]) => b.localeCompare(a))
+              .sort(([eventA, statsA], [eventB, statsB]) => {
+                // Archive goes to the bottom
+                const aIsArchive = eventA === 'archive'
+                const bIsArchive = eventB === 'archive'
+                if (aIsArchive !== bIsArchive) {
+                  return aIsArchive ? 1 : -1
+                }
+                // First: events with unpublished videos come first
+                const aHasUnpublished = statsA.published < statsA.total
+                const bHasUnpublished = statsB.published < statsB.total
+                if (aHasUnpublished !== bHasUnpublished) {
+                  return aHasUnpublished ? -1 : 1
+                }
+                // Second: sort by last published date (newest first)
+                const aDate = statsA.lastPublishedDate ?? ''
+                const bDate = statsB.lastPublishedDate ?? ''
+                return bDate.localeCompare(aDate)
+              })
               .map(([event, stats]) => (
                 <Link
                   key={event}
