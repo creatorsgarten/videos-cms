@@ -98,7 +98,7 @@ function VideoListPage() {
                       key={v.id}
                       to="/videos/$event/$slug"
                       params={{ event: v.event, slug: v.slug }}
-                      className="flex items-center gap-3 px-4 py-3 text-sm hover:bg-gray-50"
+                      className="flex items-center gap-3 rounded-md px-4 py-3 text-sm transition-colors hover:bg-gray-100"
                     >
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-medium">{v.title}</p>

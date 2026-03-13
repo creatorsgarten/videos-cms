@@ -192,7 +192,7 @@ function HomePage() {
                   key={event}
                   to="/videos"
                   search={{ event }}
-                  className="flex items-center justify-between px-4 py-3 hover:bg-gray-50"
+                  className="flex items-center justify-between rounded-md px-4 py-3 transition-colors hover:bg-gray-100"
                 >
                   <div>
                     <p className="font-medium">{event}</p>
