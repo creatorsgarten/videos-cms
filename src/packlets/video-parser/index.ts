@@ -69,7 +69,7 @@ export function serializeVideoFile(
   data: VideoFrontMatter,
   content: string,
 ): string {
-  const frontmatterStr = yaml.dump(data, { lineWidth: -1, quotingType: '"' })
+  const frontmatterStr = yaml.dump(data, { lineWidth: -1, quotingType: "'" })
   const body = content.trim()
   return `---\n${frontmatterStr}---\n${body ? `\n${body}\n` : ''}`
 }
@@ -79,15 +79,24 @@ export async function serializeVideoFileFormatted(
   data: VideoFrontMatter,
   content: string,
 ): Promise<string> {
-  const frontmatterStr = yaml.dump(data, { lineWidth: -1, quotingType: '"' })
   const body = content.trim()
-  const unformatted = `---\n${frontmatterStr}---\n${body ? `\n${body}\n` : ''}`
 
   try {
-    return await format(unformatted, { parser: 'markdown' })
+    // Format YAML frontmatter separately
+    const rawFrontmatter = yaml.dump(data, { lineWidth: -1, quotingType: "'" })
+    const formattedFrontmatter = await format(rawFrontmatter, {
+      parser: 'yaml',
+      singleQuote: true,
+      semi: false,
+      trailingComma: 'all',
+    })
+
+    // Combine formatted frontmatter with body
+    return `---\n${formattedFrontmatter}---\n${body ? `\n${body}\n` : ''}`
   } catch {
     // Fallback to unformatted if prettier fails
     console.warn('Prettier formatting failed, using unformatted YAML')
-    return unformatted
+    const frontmatterStr = yaml.dump(data, { lineWidth: -1, quotingType: "'" })
+    return `---\n${frontmatterStr}---\n${body ? `\n${body}\n` : ''}`
   }
 }

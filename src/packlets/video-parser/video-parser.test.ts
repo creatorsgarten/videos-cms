@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseVideoFile, serializeVideoFile } from './index'
+import { parseVideoFile, serializeVideoFile, serializeVideoFileFormatted } from './index'
 
 const MINIMAL_MD = `---
 title: "Test Talk"
@@ -89,5 +89,25 @@ describe('serializeVideoFile', () => {
     const out = serializeVideoFile(data, content)
     expect(out).toMatch(/^---\n/)
     expect(out).toContain('\n---\n')
+  })
+})
+
+describe('serializeVideoFileFormatted', () => {
+  it('formats YAML with single quotes', async () => {
+    const { data, content } = parseVideoFile(FULL_MD)
+    const formatted = await serializeVideoFileFormatted(data, content)
+
+    // Should use single quotes for values that need quoting (like dates)
+    expect(formatted).toContain("'2024-06-01'")
+
+    // Should not have double quotes in the YAML section
+    const [frontmatter] = formatted.split('---').slice(1)
+    expect(frontmatter).not.toMatch(/:\s+"[^"]+"\s*$/)
+  })
+
+  it('preserves body content', async () => {
+    const { data, content } = parseVideoFile(FULL_MD)
+    const formatted = await serializeVideoFileFormatted(data, content)
+    expect(formatted).toContain('Talk body.')
   })
 })
