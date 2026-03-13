@@ -674,26 +674,23 @@ function LocalizableTextInput({
 
   return (
     <div className="space-y-2">
-      {label && (
-        <div className="flex items-center justify-between">
-          <Field label={label}>
-            <div />
-          </Field>
-          <button
-            type="button"
-            onClick={() => {
-              if (isLocalized) {
-                onChange(value.en || '')
-              } else {
-                onChange({ en: value, th: value })
-              }
-            }}
-            className="text-xs text-blue-600 hover:underline"
-          >
-            {isLocalized ? 'Use plain text' : 'Make localized'}
-          </button>
-        </div>
-      )}
+      {label && <Field label={label}><div /></Field>}
+      <div className="flex items-center justify-between">
+        <div />
+        <button
+          type="button"
+          onClick={() => {
+            if (isLocalized) {
+              onChange(value.en || '')
+            } else {
+              onChange({ en: value, th: value })
+            }
+          }}
+          className="text-xs text-blue-600 hover:underline"
+        >
+          {isLocalized ? 'Use plain text' : 'Make localized'}
+        </button>
+      </div>
       {isLocalized ? (
         <div className="space-y-2">
           <div>
