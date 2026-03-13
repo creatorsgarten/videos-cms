@@ -4,7 +4,7 @@ import { useForm } from '@tanstack/react-form'
 import React, { useRef, useState } from 'react'
 import yaml from 'js-yaml'
 import { z } from 'zod'
-import { CheckCircle, Loader2, AlertCircle, Upload, Trash2 } from 'lucide-react'
+import { CheckCircle, Loader2, AlertCircle, Upload, Trash2, X } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -492,13 +492,27 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
                   <span className="mb-1 block text-xs font-medium text-[var(--sea-ink-soft)]">
                     Publish Date
                   </span>
-                  <Input
-                    aria-label="Publish Date"
-                    type="date"
-                    value={f.state.value.split('T')[0] || ''}
-                    onChange={(e) => f.handleChange(e.target.value)}
-                    onBlur={f.handleBlur}
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      aria-label="Publish Date"
+                      type="date"
+                      value={f.state.value.split('T')[0] || ''}
+                      onChange={(e) => f.handleChange(e.target.value)}
+                      onBlur={f.handleBlur}
+                      className="flex-1"
+                    />
+                    {f.state.value && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => f.handleChange('')}
+                        title="Clear publish date"
+                      >
+                        <X size={16} />
+                      </Button>
+                    )}
+                  </div>
                   <p className="mt-1 text-xs text-[var(--sea-ink-soft)]">
                     Leave empty for draft. Today publishes immediately, future dates schedule on YouTube.
                   </p>
