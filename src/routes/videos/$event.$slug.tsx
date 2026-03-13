@@ -34,15 +34,18 @@ function EditPage() {
 
   if (!video) {
     return (
-      <main className="mx-auto max-w-2xl px-4 py-8">
-        <p className="text-gray-500">Video not found. Did you open the folder?</p>
+      <main className="page-wrap px-4 py-12">
+        <div className="island-shell rounded-2xl p-6 sm:p-8">
+          <p className="text-gray-500">Video not found. Did you open the folder?</p>
+        </div>
       </main>
     )
   }
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-8">
-      <button
+    <main className="page-wrap px-4 py-12">
+      <div className="island-shell rounded-2xl p-6 sm:p-8">
+        <button
         onClick={() => navigate({ to: '/' })}
         className="mb-6 text-sm text-blue-600 hover:underline"
       >
@@ -52,7 +55,8 @@ function EditPage() {
       <p className="mb-4 font-mono text-xs text-gray-400">
         {event}/{slug}
       </p>
-      <VideoEditForm video={video} id={id} />
+        <VideoEditForm video={video} id={id} />
+      </div>
     </main>
   )
 }

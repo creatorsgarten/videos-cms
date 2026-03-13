@@ -87,8 +87,9 @@ function HomePage() {
   }, {})
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-8">
-      <div className="mb-6 flex items-center justify-between gap-4">
+    <main className="page-wrap px-4 py-12">
+      <div className="island-shell rounded-2xl p-6 sm:p-8">
+        <div className="mb-6 flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Videos CMS</h1>
           {dirName && (
@@ -176,6 +177,7 @@ function HomePage() {
           </div>
         </>
       )}
+      </div>
     </main>
   )
 }
