@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useLiveQuery } from '@tanstack/react-db'
 import { useEffect, useRef, useState } from 'react'
-import { FolderOpen, RefreshCw, AlertCircle } from 'lucide-react'
+import { FolderOpen, RefreshCw, AlertCircle, ChevronRight } from 'lucide-react'
 import {
   openDirectory,
   loadPersistedDirectory,
@@ -21,17 +21,12 @@ type Status =
 function HomePage() {
   const [dirName, setDirName] = useState<string | null>(null)
   const [status, setStatus] = useState<Status>({ type: 'idle' })
-  const [search, setSearch] = useState('')
   const initialized = useRef(false)
 
   const { data: videos } = useLiveQuery((q) =>
     q.from({ v: videosCollection }).select(({ v }) => ({
       id: v.id,
       event: v.event,
-      slug: v.slug,
-      title: v.data.title,
-      speaker: v.data.speaker,
-      youtube: v.data.youtube,
       published: v.data.published,
     })),
   )
@@ -77,24 +72,19 @@ function HomePage() {
     if (handle) await loadDirectory(handle)
   }
 
-  // Group and filter videos
-  const filtered = (videos ?? []).filter((v) => {
-    if (!search) return true
-    const q = search.toLowerCase()
-    return (
-      v.title.toLowerCase().includes(q) ||
-      v.slug.toLowerCase().includes(q) ||
-      v.event.toLowerCase().includes(q) ||
-      v.speaker?.toLowerCase().includes(q)
-    )
-  })
+  const hasVideos = (videos?.length ?? 0) > 0
 
-  const grouped = filtered.reduce<Record<string, typeof filtered>>((acc, v) => {
-    ;(acc[v.event] ??= []).push(v)
+  // Group by event for the event index
+  const grouped = (videos ?? []).reduce<
+    Record<string, { total: number; published: number }>
+  >((acc, v) => {
+    acc[v.event] ??= { total: 0, published: 0 }
+    acc[v.event].total++
+    if (v.published === true || typeof v.published === 'string') {
+      acc[v.event].published++
+    }
     return acc
   }, {})
-
-  const hasVideos = (videos?.length ?? 0) > 0
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-8">
@@ -154,68 +144,41 @@ function HomePage() {
 
       {hasVideos && (
         <>
-          <input
-            type="search"
-            placeholder="Search by title, speaker, event…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="mb-6 w-full rounded-md border px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-          />
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-sm text-gray-500">
+              {videos!.length} videos across{' '}
+              {Object.keys(grouped).length} events
+            </p>
+            <Link
+              to="/videos/"
+              className="text-sm text-blue-600 hover:underline"
+            >
+              All videos →
+            </Link>
+          </div>
 
-          <div className="space-y-6">
+          <div className="divide-y rounded-lg border">
             {Object.entries(grouped)
               .sort(([a], [b]) => b.localeCompare(a))
-              .map(([event, items]) => (
-                <section key={event}>
-                  <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
-                    {event} — {items.length}
-                  </h2>
-                  <div className="divide-y rounded-lg border">
-                    {items
-                      .sort((a, b) => a.slug.localeCompare(b.slug))
-                      .map((v) => (
-                        <Link
-                          key={v.id}
-                          to="/videos/$event/$slug"
-                          params={{ event: v.event, slug: v.slug }}
-                          className="flex items-center gap-3 px-4 py-3 text-sm hover:bg-gray-50"
-                        >
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate font-medium">{v.title}</p>
-                            {v.speaker && (
-                              <p className="truncate text-xs text-gray-400">
-                                {v.speaker}
-                              </p>
-                            )}
-                          </div>
-                          <PublishedBadge published={v.published} />
-                        </Link>
-                      ))}
+              .map(([event, stats]) => (
+                <Link
+                  key={event}
+                  to="/videos/"
+                  search={{ event }}
+                  className="flex items-center justify-between px-4 py-3 hover:bg-gray-50"
+                >
+                  <div>
+                    <p className="font-medium">{event}</p>
+                    <p className="text-xs text-gray-400">
+                      {stats.total} videos · {stats.published} published
+                    </p>
                   </div>
-                </section>
+                  <ChevronRight size={16} className="text-gray-400" />
+                </Link>
               ))}
           </div>
         </>
       )}
     </main>
-  )
-}
-
-function PublishedBadge({
-  published,
-}: {
-  published: boolean | string | undefined
-}) {
-  if (published === true || typeof published === 'string') {
-    return (
-      <span className="shrink-0 rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-700">
-        published
-      </span>
-    )
-  }
-  return (
-    <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
-      draft
-    </span>
   )
 }

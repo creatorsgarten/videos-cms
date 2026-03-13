@@ -5,10 +5,8 @@ import fixtures from './fixtures/videos.json' with { type: 'json' }
 test.describe('video edit form', () => {
   test.beforeEach(async ({ page }) => {
     await injectDirectoryHandle(page, fixtures)
-    await page.goto('/')
-    await page.getByText('Make Pull Requests Great Again').click()
-    await expect(page).toHaveURL(/\/videos\/bkkjs22\/make-pull-requests-great-again/)
-    // Wait for the form to be ready (not just URL change)
+    await page.goto('videos/bkkjs22/make-pull-requests-great-again')
+    // Wait for the form to be ready
     await expect(page.getByRole('button', { name: 'Save' })).toBeVisible()
   })
 

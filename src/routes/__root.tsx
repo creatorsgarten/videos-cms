@@ -1,8 +1,11 @@
 import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
+import { useEffect, useRef } from 'react'
 import Footer from '../components/Footer'
 import Header from '../components/Header'
+import { loadPersistedDirectory, ensurePermission } from '../packlets/fs'
+import { scanVideos } from '../packlets/video-store'
 
 import appCss from '../styles.css?url'
 
@@ -33,6 +36,18 @@ export const Route = createRootRoute({
 })
 
 function RootDocument({ children }: { children: React.ReactNode }) {
+  const initialized = useRef(false)
+
+  useEffect(() => {
+    if (initialized.current) return
+    initialized.current = true
+    loadPersistedDirectory().then(async (handle) => {
+      if (!handle) return
+      const granted = await ensurePermission(handle)
+      if (granted) await scanVideos(handle)
+    })
+  }, [])
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
