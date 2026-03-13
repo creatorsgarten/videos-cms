@@ -4,7 +4,7 @@ import { useForm } from '@tanstack/react-form'
 import { useRef, useState } from 'react'
 import yaml from 'js-yaml'
 import { z } from 'zod'
-import { CheckCircle, Loader2, AlertCircle, Upload } from 'lucide-react'
+import { CheckCircle, Loader2, AlertCircle, Upload, Trash2 } from 'lucide-react'
 import {
   videosCollection,
   getVideoById,
@@ -221,11 +221,29 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
           <form.Field
             name="youtubeTitle"
             children={(f) => (
-              <LocalizableTextInput
-                label="YouTube Title (optional)"
-                value={f.state.value}
-                onChange={f.handleChange}
-              />
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-medium text-[var(--sea-ink-soft)]">
+                    YouTube Title (optional)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowYoutubeTitle(false)
+                      f.handleChange('')
+                    }}
+                    className="rounded p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                    title="Remove YouTube Title"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+                <LocalizableTextInput
+                  label=""
+                  value={f.state.value}
+                  onChange={f.handleChange}
+                />
+              </div>
             )}
           />
         )}
@@ -656,24 +674,26 @@ function LocalizableTextInput({
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <Field label={label}>
-          <div />
-        </Field>
-        <button
-          type="button"
-          onClick={() => {
-            if (isLocalized) {
-              onChange(value.en || '')
-            } else {
-              onChange({ en: value, th: value })
-            }
-          }}
-          className="text-xs text-blue-600 hover:underline"
-        >
-          {isLocalized ? 'Use plain text' : 'Make localized'}
-        </button>
-      </div>
+      {label && (
+        <div className="flex items-center justify-between">
+          <Field label={label}>
+            <div />
+          </Field>
+          <button
+            type="button"
+            onClick={() => {
+              if (isLocalized) {
+                onChange(value.en || '')
+              } else {
+                onChange({ en: value, th: value })
+              }
+            }}
+            className="text-xs text-blue-600 hover:underline"
+          >
+            {isLocalized ? 'Use plain text' : 'Make localized'}
+          </button>
+        </div>
+      )}
       {isLocalized ? (
         <div className="space-y-2">
           <div>
