@@ -14,7 +14,8 @@ test.describe('video edit form', () => {
     await expect(page.getByLabel('Title *')).toHaveValue('Make Pull Requests Great Again')
     await expect(page.getByLabel('YouTube ID *')).toHaveValue('fIF3w66IroM')
     await expect(page.getByLabel('Language')).toHaveValue('en')
-    await expect(page.getByRole('checkbox', { name: /published/i })).toBeChecked()
+    // Check that Publish Date field has the expected date value (from fixture)
+    await expect(page.getByLabel('Publish Date')).toHaveValue('2025-04-20')
     await expect(page.getByRole('checkbox', { name: /managed/i })).toBeChecked()
   })
 
@@ -40,10 +41,11 @@ test.describe('video edit form', () => {
   })
 
   test('validates chapters YAML', async ({ page }) => {
-    const chaptersArea = page.locator('textarea').filter({ hasText: '' }).nth(0)
-    // Find chapters textarea by its placeholder
-    const chaptersTa = page
-      .getByPlaceholder("'0:00': Introduction")
+    // Click the "Add Chapters" button to open the modal
+    await page.getByRole('button', { name: /add chapters/i }).click()
+
+    // Find chapters textarea in the modal by its placeholder
+    const chaptersTa = page.getByPlaceholder("'0:00': Introduction")
     await chaptersTa.fill('invalid: yaml: [broken')
     await chaptersTa.blur()
     await expect(page.getByText(/invalid yaml/i)).toBeVisible()
@@ -71,7 +73,9 @@ test.describe('video edit form', () => {
   })
 
   test('can uncheck published and save as draft', async ({ page }) => {
-    await page.getByRole('checkbox', { name: /published/i }).uncheck()
+    // Clear the Publish Date field to make it a draft
+    const publishDateInput = page.getByLabel('Publish Date')
+    await publishDateInput.clear()
     await page.getByRole('button', { name: 'Save' }).click()
     await expect(page.getByText('Saved')).toBeVisible()
 

@@ -73,6 +73,13 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
   const [showYoutubeTitle, setShowYoutubeTitle] = useState(
     !!video.data.youtubeTitle,
   )
+  const [showEnglishDescription, setShowEnglishDescription] = useState(
+    !!video.data.englishDescription,
+  )
+  const [showTeam, setShowTeam] = useState(!!video.data.team)
+  const [showBody, setShowBody] = useState(!!video.content.trim())
+  const [showChaptersModal, setShowChaptersModal] = useState(false)
+  const [chaptersError, setChaptersError] = useState('')
 
   const youtubeTitle = video.data.youtubeTitle ?? ''
 
@@ -86,18 +93,17 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
       type: video.data.type,
       language: video.data.language,
       managed: video.data.managed,
-      publishedEnabled: video.data.published != null,
-      publishedValue:
+      publishedDate:
         typeof video.data.published === 'string' ? video.data.published : '',
       description: video.data.description ?? '',
       englishDescription: video.data.englishDescription ?? '',
-      tagsStr: (video.data.tags ?? []).join(', '),
       subtitleEn: video.data.subtitles?.includes('en') ?? false,
       subtitleTh: video.data.subtitles?.includes('th') ?? false,
       chaptersYaml: video.data.chapters
         ? yaml.dump(video.data.chapters, { lineWidth: -1 }).trimEnd()
         : '',
       content: video.content,
+      team: video.data.team?.name ?? '',
     },
     onSubmit: async ({ value }) => {
       setSaveStatus('saving')
@@ -111,14 +117,9 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
           chapters = parsed as VideoFrontMatter['chapters']
         }
 
-        const published: VideoFrontMatter['published'] = value.publishedEnabled
-          ? value.publishedValue.trim() || true
+        const published: VideoFrontMatter['published'] = value.publishedDate
+          ? value.publishedDate
           : undefined
-
-        const tags = value.tagsStr
-          .split(',')
-          .map((t) => t.trim())
-          .filter(Boolean)
 
         const subtitles = [
           value.subtitleEn && 'en',
@@ -136,23 +137,23 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
 
         // Add optional fields if present
         if (value.speaker) newData.speaker = value.speaker
-        if (value.tagline) newData.tagline = value.tagline
+        if (value.type === 'pitch' && value.tagline) newData.tagline = value.tagline
         if (showYoutubeTitle && value.youtubeTitle)
           newData.youtubeTitle = value.youtubeTitle
         if (value.description) newData.description = value.description
-        if (value.englishDescription)
+        if (showEnglishDescription && value.englishDescription)
           newData.englishDescription = value.englishDescription
-        if (published != null) newData.published = published
-        if (tags.length) newData.tags = tags
+        if (published) newData.published = published
         if (subtitles.length) newData.subtitles = subtitles
         if (chapters) newData.chapters = chapters
+        if (showTeam && value.team) newData.team = { name: value.team }
 
         // Preserve fields from original that aren't being edited
         const data: VideoFrontMatter = { ...video.data }
         // Override with new values
         Object.assign(data, newData)
-        // Explicitly remove published if unchecked
-        if (!value.publishedEnabled) {
+        // Explicitly remove published if not set
+        if (!published) {
           delete data.published
         }
 
@@ -166,286 +167,578 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
     },
   })
 
+  const currentType = form.getFieldValue('type')
+
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault()
-        form.handleSubmit()
-      }}
-      className="space-y-5"
-    >
-      {/* ── Core fields ── */}
-      <fieldset className="space-y-4 rounded-lg border p-4">
-        <legend className="px-1 text-xs font-semibold uppercase tracking-wider text-gray-400">
-          Core
-        </legend>
+    <>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          form.handleSubmit()
+        }}
+        className="space-y-5"
+      >
+        {/* ── 1. Core fieldset ── */}
+        <fieldset className="space-y-4 rounded-lg border p-4">
+          <legend className="px-1 text-xs font-semibold uppercase tracking-wider text-gray-400">
+            Core
+          </legend>
 
-        <Field label="Title *">
-          <form.Field
-            name="title"
-            validators={{ onChange: z.string().min(1, 'Required') }}
-            children={(f) => (
-              <>
-                <input
-                  className={input(f.state.meta.errors.length > 0)}
-                  value={f.state.value}
-                  onChange={(e) => f.handleChange(e.target.value)}
-                  onBlur={f.handleBlur}
-                />
-                <FieldError errors={f.state.meta.errors} />
-              </>
-            )}
-          />
-        </Field>
+          <Field label="Title *">
+            <form.Field
+              name="title"
+              validators={{ onChange: z.string().min(1, 'Required') }}
+              children={(f) => (
+                <>
+                  <input
+                    className={input(f.state.meta.errors.length > 0)}
+                    value={f.state.value}
+                    onChange={(e) => f.handleChange(e.target.value)}
+                    onBlur={f.handleBlur}
+                  />
+                  <FieldError errors={f.state.meta.errors} />
+                </>
+              )}
+            />
+          </Field>
 
-        <Field label="YouTube ID *">
-          <form.Field
-            name="youtube"
-            validators={{ onChange: z.string().min(1, 'Required') }}
-            children={(f) => (
-              <>
-                <input
-                  className={input(f.state.meta.errors.length > 0)}
-                  value={f.state.value}
-                  onChange={(e) => f.handleChange(e.target.value)}
-                  onBlur={f.handleBlur}
-                  placeholder="e.g. dQw4w9WgXcQ"
-                />
-                <FieldError errors={f.state.meta.errors} />
-              </>
-            )}
-          />
-        </Field>
+          <Field label="YouTube ID *">
+            <form.Field
+              name="youtube"
+              validators={{ onChange: z.string().min(1, 'Required') }}
+              children={(f) => (
+                <>
+                  <input
+                    className={input(f.state.meta.errors.length > 0)}
+                    value={f.state.value}
+                    onChange={(e) => f.handleChange(e.target.value)}
+                    onBlur={f.handleBlur}
+                    placeholder="e.g. dQw4w9WgXcQ"
+                  />
+                  <FieldError errors={f.state.meta.errors} />
+                </>
+              )}
+            />
+          </Field>
 
-        {showYoutubeTitle && (
-          <form.Field
-            name="youtubeTitle"
-            children={(f) => (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-medium text-[var(--sea-ink-soft)]">
-                    YouTube Title (optional)
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowYoutubeTitle(false)
-                      f.handleChange('')
-                    }}
-                    className="rounded p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
-                    title="Remove YouTube Title"
+          <TypeSelect form={form} />
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="Language">
+              <form.Field
+                name="language"
+                children={(f) => (
+                  <select
+                    className={input()}
+                    value={f.state.value}
+                    onChange={(e) => f.handleChange(e.target.value as any)}
                   >
-                    <Trash2 size={16} />
-                  </button>
+                    <option value="th">Thai</option>
+                    <option value="en">English</option>
+                  </select>
+                )}
+              />
+            </Field>
+
+            <form.Field
+              name="managed"
+              children={(f) => (
+                <div className="space-y-1">
+                  <label className="flex cursor-pointer items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={f.state.value}
+                      onChange={(e) => f.handleChange(e.target.checked)}
+                      className="h-4 w-4 rounded"
+                    />
+                    Managed
+                  </label>
+                  <p className="text-xs text-[var(--sea-ink-soft)]">
+                    When enabled, this video's metadata will be synced to YouTube
+                  </p>
                 </div>
-                <LocalizableTextInput
-                  label=""
-                  value={f.state.value}
-                  onChange={f.handleChange}
-                />
-              </div>
-            )}
-          />
+              )}
+            />
+          </div>
+        </fieldset>
+
+        {/* ── 2. YouTube Title section (Optional) ── */}
+        {showYoutubeTitle && (
+          <fieldset className="space-y-4 rounded-lg border p-4">
+            <legend className="px-1 text-xs font-semibold uppercase tracking-wider text-gray-400">
+              YouTube Title
+            </legend>
+            <form.Field
+              name="youtubeTitle"
+              children={(f) => (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-medium text-[var(--sea-ink-soft)]">
+                      Customize Title
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowYoutubeTitle(false)
+                        f.handleChange('')
+                      }}
+                      className="rounded p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                      title="Remove YouTube Title"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                  <LocalizableTextInput
+                    label=""
+                    value={f.state.value}
+                    onChange={f.handleChange}
+                  />
+                </div>
+              )}
+            />
+          </fieldset>
         )}
 
         {!showYoutubeTitle && (
-          <button
-            type="button"
-            onClick={() => setShowYoutubeTitle(true)}
-            className="text-xs text-blue-600 hover:underline"
-          >
-            [+ Customize YouTube Title]
-          </button>
+          <div className="rounded-lg border border-dashed p-4">
+            <button
+              type="button"
+              onClick={() => setShowYoutubeTitle(true)}
+              className="text-xs text-blue-600 hover:underline"
+            >
+              [+ Customize YouTube Title]
+            </button>
+          </div>
         )}
 
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="Type">
+        {/* ── 3. Pitch Info fieldset (Conditional) ── */}
+        {currentType === 'pitch' && (
+          <fieldset className="space-y-4 rounded-lg border p-4">
+            <legend className="px-1 text-xs font-semibold uppercase tracking-wider text-gray-400">
+              Pitch Info
+            </legend>
+
+            <Field label="Tagline">
+              <form.Field
+                name="tagline"
+                children={(f) => (
+                  <>
+                    <input
+                      className={input()}
+                      value={f.state.value}
+                      onChange={(e) => f.handleChange(e.target.value)}
+                      placeholder="Used in pitch titles"
+                    />
+                    <p className="mt-1 text-xs text-[var(--sea-ink-soft)]">
+                      Shown in the YouTube title for pitch videos
+                    </p>
+                  </>
+                )}
+              />
+            </Field>
+
+            {showTeam && (
+              <form.Field
+                name="team"
+                children={(f) => (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-medium text-[var(--sea-ink-soft)]">
+                        Team
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowTeam(false)
+                          f.handleChange('')
+                        }}
+                        className="rounded p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        title="Remove Team"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                    <input
+                      className={input()}
+                      value={f.state.value}
+                      onChange={(e) => f.handleChange(e.target.value)}
+                      placeholder="Team name"
+                    />
+                  </div>
+                )}
+              />
+            )}
+
+            {!showTeam && (
+              <button
+                type="button"
+                onClick={() => setShowTeam(true)}
+                className="text-xs text-blue-600 hover:underline"
+              >
+                [+ Add Team]
+              </button>
+            )}
+          </fieldset>
+        )}
+
+        {/* ── 4. Speaker & Description fieldset ── */}
+        <fieldset className="space-y-4 rounded-lg border p-4">
+          <legend className="px-1 text-xs font-semibold uppercase tracking-wider text-gray-400">
+            Speaker & Description
+          </legend>
+
+          <Field label="Speaker">
             <form.Field
-              name="type"
+              name="speaker"
               children={(f) => (
-                <select
-                  className={input()}
-                  value={f.state.value}
-                  onChange={(e) => f.handleChange(e.target.value as any)}
-                >
-                  <option value="talk">talk</option>
-                  <option value="pitch">pitch</option>
-                  <option value="archive">archive</option>
-                </select>
+                <>
+                  <input
+                    className={input()}
+                    value={f.state.value}
+                    onChange={(e) => f.handleChange(e.target.value)}
+                    placeholder="John Doe; Jane Smith"
+                  />
+                  <p className="mt-1 text-xs text-[var(--sea-ink-soft)]">
+                    Separate multiple speakers with semicolon
+                  </p>
+                </>
               )}
             />
           </Field>
 
-          <Field label="Language">
+          <Field label="Description">
             <form.Field
-              name="language"
+              name="description"
               children={(f) => (
-                <select
+                <textarea
+                  rows={4}
                   className={input()}
                   value={f.state.value}
-                  onChange={(e) => f.handleChange(e.target.value as any)}
-                >
-                  <option value="th">th</option>
-                  <option value="en">en</option>
-                </select>
+                  onChange={(e) => f.handleChange(e.target.value)}
+                />
               )}
             />
           </Field>
-        </div>
 
-        <div className="flex gap-6">
-          <form.Field
-            name="managed"
-            children={(f) => (
-              <label className="flex cursor-pointer items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={f.state.value}
-                  onChange={(e) => f.handleChange(e.target.checked)}
-                  className="h-4 w-4 rounded"
-                />
-                Managed
-              </label>
-            )}
-          />
-        </div>
-      </fieldset>
-
-      {/* ── Speaker / tagline ── */}
-      <fieldset className="space-y-4 rounded-lg border p-4">
-        <legend className="px-1 text-xs font-semibold uppercase tracking-wider text-gray-400">
-          Speaker
-        </legend>
-        <Field label="Speaker">
-          <form.Field
-            name="speaker"
-            children={(f) => (
-              <input
-                className={input()}
-                value={f.state.value}
-                onChange={(e) => f.handleChange(e.target.value)}
-              />
-            )}
-          />
-        </Field>
-        <Field label="Tagline">
-          <form.Field
-            name="tagline"
-            children={(f) => (
-              <input
-                className={input()}
-                value={f.state.value}
-                onChange={(e) => f.handleChange(e.target.value)}
-              />
-            )}
-          />
-        </Field>
-      </fieldset>
-
-      {/* ── Publishing ── */}
-      <fieldset className="space-y-4 rounded-lg border p-4">
-        <legend className="px-1 text-xs font-semibold uppercase tracking-wider text-gray-400">
-          Publishing
-        </legend>
-
-        <form.Field
-          name="publishedEnabled"
-          children={(fEnabled) => (
-            <div className="space-y-2">
-              <label className="flex cursor-pointer items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={fEnabled.state.value}
-                  onChange={(e) => fEnabled.handleChange(e.target.checked)}
-                  className="h-4 w-4 rounded"
-                />
-                Published
-              </label>
-              {fEnabled.state.value && (
-                <form.Field
-                  name="publishedValue"
-                  validators={{
-                    onChange: z
-                      .string()
-                      .refine(
-                        (v) =>
-                          v === '' || /^\d{4}-\d{2}-\d{2}(T[\d:.]+Z)?$/.test(v),
-                        'Leave empty for "true", or enter a date: YYYY-MM-DD',
-                      ),
-                  }}
-                  children={(f) => (
-                    <>
-                      <input
-                        className={input(f.state.meta.errors.length > 0)}
-                        value={f.state.value}
-                        onChange={(e) => f.handleChange(e.target.value)}
-                        onBlur={f.handleBlur}
-                        placeholder="YYYY-MM-DD  (leave empty for published: true)"
-                      />
-                      <FieldError errors={f.state.meta.errors} />
-                    </>
-                  )}
-                />
+          {showEnglishDescription && (
+            <form.Field
+              name="englishDescription"
+              children={(f) => (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-medium text-[var(--sea-ink-soft)]">
+                      English Description
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowEnglishDescription(false)
+                        f.handleChange('')
+                      }}
+                      className="rounded p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                      title="Remove English Description"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                  <textarea
+                    rows={4}
+                    className={input()}
+                    value={f.state.value}
+                    onChange={(e) => f.handleChange(e.target.value)}
+                  />
+                </div>
               )}
-            </div>
+            />
           )}
+
+          {!showEnglishDescription && (
+            <button
+              type="button"
+              onClick={() => setShowEnglishDescription(true)}
+              className="text-xs text-blue-600 hover:underline"
+            >
+              [+ Add English Description]
+            </button>
+          )}
+        </fieldset>
+
+        {/* ── 5. Publish Date fieldset ── */}
+        <fieldset className="space-y-4 rounded-lg border p-4">
+          <legend className="px-1 text-xs font-semibold uppercase tracking-wider text-gray-400">
+            Publish Date
+          </legend>
+
+          <form.Field
+            name="publishedDate"
+            validators={{
+              onChange: z
+                .string()
+                .refine(
+                  (v) => v === '' || /^\d{4}-\d{2}-\d{2}(T[\d:.]+Z)?$/.test(v),
+                  'Enter a date: YYYY-MM-DD',
+                ),
+            }}
+            children={(f) => (
+              <div className="space-y-2">
+                <label className="block">
+                  <span className="mb-1 block text-xs font-medium text-[var(--sea-ink-soft)]">
+                    Publish Date
+                  </span>
+                  <input
+                    type="date"
+                    className={input(f.state.meta.errors.length > 0)}
+                    value={f.state.value.split('T')[0] || ''}
+                    onChange={(e) => f.handleChange(e.target.value)}
+                    onBlur={f.handleBlur}
+                  />
+                  <p className="mt-1 text-xs text-[var(--sea-ink-soft)]">
+                    Leave empty for draft. Today publishes immediately, future dates schedule on YouTube.
+                  </p>
+                </label>
+                <FieldError errors={f.state.meta.errors} />
+              </div>
+            )}
+          />
+        </fieldset>
+
+        {/* ── 6. Chapters section ── */}
+        <fieldset className="space-y-4 rounded-lg border p-4">
+          <legend className="px-1 text-xs font-semibold uppercase tracking-wider text-gray-400">
+            Chapters
+          </legend>
+
+          <form.Field
+            name="chaptersYaml"
+            children={(f) => {
+              const parsedChapters = (() => {
+                if (!f.state.value.trim()) return {}
+                try {
+                  const parsed = yaml.load(f.state.value)
+                  return (typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}) as Record<string, any>
+                } catch {
+                  return {}
+                }
+              })()
+
+              return (
+                <div className="space-y-3">
+                  {Object.keys(parsedChapters).length > 0 && (
+                    <div className="overflow-x-auto rounded border">
+                      <table className="w-full text-sm">
+                        <thead className="border-b bg-[var(--header-bg)]">
+                          <tr>
+                            <th className="px-3 py-2 text-left">Timestamp</th>
+                            <th className="px-3 py-2 text-left">Chapter Name</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {Object.entries(parsedChapters).map(([time, name], idx) => (
+                            <tr key={idx} className="border-b">
+                              <td className="px-3 py-2 font-mono text-xs">{time}</td>
+                              <td className="px-3 py-2">
+                                {typeof name === 'string'
+                                  ? name
+                                  : typeof name === 'object' && name !== null
+                                    ? `${name.en || ''} / ${name.th || ''}`
+                                    : String(name)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => setShowChaptersModal(true)}
+                    className="text-xs text-blue-600 hover:underline"
+                  >
+                    {Object.keys(parsedChapters).length > 0 ? '[Edit Chapters]' : '[+ Add Chapters]'}
+                  </button>
+                </div>
+              )
+            }}
+          />
+        </fieldset>
+
+        {/* ── 7. Subtitles section ── */}
+        <fieldset className="space-y-4 rounded-lg border p-4">
+          <legend className="px-1 text-xs font-semibold uppercase tracking-wider text-gray-400">
+            Subtitles
+          </legend>
+          <SubtitleUploads id={id} form={form} />
+        </fieldset>
+
+        {/* ── 8. Body/Markdown section (Optional) ── */}
+        {showBody && (
+          <fieldset className="space-y-4 rounded-lg border p-4">
+            <legend className="px-1 text-xs font-semibold uppercase tracking-wider text-gray-400">
+              Body (Markdown)
+            </legend>
+            <form.Field
+              name="content"
+              children={(f) => (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-medium text-[var(--sea-ink-soft)]">
+                      Content
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowBody(false)
+                        f.handleChange('')
+                      }}
+                      className="rounded p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                      title="Remove Body"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                  <textarea
+                    rows={6}
+                    className={`font-mono text-sm ${input()}`}
+                    value={f.state.value}
+                    onChange={(e) => f.handleChange(e.target.value)}
+                  />
+                </div>
+              )}
+            />
+          </fieldset>
+        )}
+
+        {!showBody && (
+          <div className="rounded-lg border border-dashed p-4">
+            <button
+              type="button"
+              onClick={() => setShowBody(true)}
+              className="text-xs text-blue-600 hover:underline"
+            >
+              [+ Add Body]
+            </button>
+          </div>
+        )}
+
+        {/* ── Submit ── */}
+        <div className="flex items-center gap-3">
+          <form.Subscribe
+            selector={(s) => s.isSubmitting}
+            children={(isSubmitting) => (
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {isSubmitting && <Loader2 size={14} className="animate-spin" />}
+                Save
+              </button>
+            )}
+          />
+          {saveStatus === 'saved' && (
+            <span className="flex items-center gap-1 text-sm text-green-600">
+              <CheckCircle size={14} /> Saved
+            </span>
+          )}
+          {saveStatus === 'error' && (
+            <span className="flex items-center gap-1 text-sm text-red-600">
+              <AlertCircle size={14} /> {saveError || 'Save failed'}
+            </span>
+          )}
+        </div>
+      </form>
+
+      {/* ── Chapters Modal ── */}
+      {showChaptersModal && (
+        <ChaptersModal
+          form={form}
+          onClose={() => {
+            setShowChaptersModal(false)
+            setChaptersError('')
+          }}
+          onSave={() => {
+            setShowChaptersModal(false)
+            setChaptersError('')
+          }}
+          error={chaptersError}
+          setError={setChaptersError}
         />
+      )}
+    </>
+  )
+}
 
-        <Field label="Tags (comma-separated)">
-          <form.Field
-            name="tagsStr"
-            children={(f) => (
-              <input
-                className={input()}
-                value={f.state.value}
-                onChange={(e) => f.handleChange(e.target.value)}
-                placeholder="javascript, react, typescript"
-              />
-            )}
-          />
-        </Field>
+// ---------------------------------------------------------------------------
+// TypeSelect component - Boxed radio buttons
+// ---------------------------------------------------------------------------
 
-        <SubtitleUploads id={id} form={form} />
-      </fieldset>
+function TypeSelect({ form }: { form: any }) {
+  const types = [
+    { value: 'talk', label: 'Talk', description: 'Regular event talk' },
+    { value: 'pitch', label: 'Pitch', description: 'Pitch presentation (shows tagline in title)' },
+    { value: 'archive', label: 'Archive', description: 'Archived recording' },
+  ]
 
-      {/* ── Description ── */}
-      <fieldset className="space-y-4 rounded-lg border p-4">
-        <legend className="px-1 text-xs font-semibold uppercase tracking-wider text-gray-400">
-          Description
-        </legend>
-        <Field label="Description (Thai / default)">
-          <form.Field
-            name="description"
-            children={(f) => (
-              <textarea
-                rows={4}
-                className={input()}
-                value={f.state.value}
-                onChange={(e) => f.handleChange(e.target.value)}
-              />
-            )}
-          />
-        </Field>
-        <Field label="English Description">
-          <form.Field
-            name="englishDescription"
-            children={(f) => (
-              <textarea
-                rows={4}
-                className={input()}
-                value={f.state.value}
-                onChange={(e) => f.handleChange(e.target.value)}
-              />
-            )}
-          />
-        </Field>
-      </fieldset>
+  return (
+    <form.Field
+      name="type"
+      children={(f: any) => (
+        <div className="space-y-2">
+          <label className="text-xs font-medium text-[var(--sea-ink-soft)]">Type</label>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            {types.map((type) => (
+              <button
+                key={type.value}
+                type="button"
+                onClick={() => f.handleChange(type.value)}
+                className={`rounded-lg border-2 p-3 text-left transition ${
+                  f.state.value === type.value
+                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                    : 'border-gray-200 hover:border-gray-300 dark:border-gray-700'
+                }`}
+              >
+                <div className="font-medium text-sm">{type.label}</div>
+                <div className="text-xs text-[var(--sea-ink-soft)]">{type.description}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    />
+  )
+}
 
-      {/* ── Chapters ── */}
-      <fieldset className="space-y-2 rounded-lg border p-4">
-        <legend className="px-1 text-xs font-semibold uppercase tracking-wider text-gray-400">
-          Chapters (YAML)
-        </legend>
+// ---------------------------------------------------------------------------
+// ChaptersModal component
+// ---------------------------------------------------------------------------
+
+function ChaptersModal({
+  form,
+  onClose,
+  onSave,
+  error,
+  setError,
+}: {
+  form: any
+  onClose: () => void
+  onSave: () => void
+  error: string
+  setError: (err: string) => void
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="max-h-[90vh] w-full max-w-2xl overflow-auto rounded-lg bg-[var(--header-bg)] p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Edit Chapters</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            ✕
+          </button>
+        </div>
+
         <form.Field
           name="chaptersYaml"
           validators={{
@@ -463,67 +756,63 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
               }
             }, 'Invalid YAML — must be a mapping of timecode: title'),
           }}
-          children={(f) => (
-            <>
-              <textarea
-                rows={8}
-                className={`font-mono text-xs ${input(f.state.meta.errors.length > 0)}`}
-                value={f.state.value}
-                onChange={(e) => f.handleChange(e.target.value)}
-                onBlur={f.handleBlur}
-                placeholder={'\'0:00\': Introduction\n\'5:30\': Main content'}
-              />
-              <FieldError errors={f.state.meta.errors} />
-            </>
-          )}
-        />
-      </fieldset>
+          children={(f: any) => (
+            <div className="space-y-3">
+              <div>
+                <label className="mb-2 block text-xs font-medium text-[var(--sea-ink-soft)]">
+                  YAML Format
+                </label>
+                <textarea
+                  rows={10}
+                  className={`font-mono text-xs ${input(f.state.meta.errors.length > 0)}`}
+                  value={f.state.value}
+                  onChange={(e) => {
+                    f.handleChange(e.target.value)
+                    setError('')
+                  }}
+                  onBlur={f.handleBlur}
+                  placeholder={'\'0:00\': Introduction\n\'5:30\': Main content\n\'10:45\': Discussion'}
+                />
+                <p className="mt-1 text-xs text-[var(--sea-ink-soft)]">
+                  Format: &apos;timestamp&apos;: Chapter Name (localized: name with {`{en: ..., th: ...}`})
+                </p>
+              </div>
 
-      {/* ── Body ── */}
-      <fieldset className="space-y-2 rounded-lg border p-4">
-        <legend className="px-1 text-xs font-semibold uppercase tracking-wider text-gray-400">
-          Body (Markdown)
-        </legend>
-        <form.Field
-          name="content"
-          children={(f) => (
-            <textarea
-              rows={6}
-              className={`font-mono text-sm ${input()}`}
-              value={f.state.value}
-              onChange={(e) => f.handleChange(e.target.value)}
-            />
-          )}
-        />
-      </fieldset>
+              {error && (
+                <p className="text-xs text-red-500">{error}</p>
+              )}
 
-      {/* ── Submit ── */}
-      <div className="flex items-center gap-3">
-        <form.Subscribe
-          selector={(s) => s.isSubmitting}
-          children={(isSubmitting) => (
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
-            >
-              {isSubmitting && <Loader2 size={14} className="animate-spin" />}
-              Save
-            </button>
+              {f.state.meta.errors.length > 0 && (
+                <FieldError errors={f.state.meta.errors} />
+              )}
+
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="rounded-md border px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (f.state.meta.errors.length > 0) {
+                      setError('Fix validation errors before saving')
+                      return
+                    }
+                    onSave()
+                  }}
+                  className="rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
           )}
         />
-        {saveStatus === 'saved' && (
-          <span className="flex items-center gap-1 text-sm text-green-600">
-            <CheckCircle size={14} /> Saved
-          </span>
-        )}
-        {saveStatus === 'error' && (
-          <span className="flex items-center gap-1 text-sm text-red-600">
-            <AlertCircle size={14} /> {saveError || 'Save failed'}
-          </span>
-        )}
       </div>
-    </form>
+    </div>
   )
 }
 
