@@ -573,7 +573,7 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs font-medium text-gray-600">
+      <span className="mb-1 block text-xs font-medium text-[var(--sea-ink-soft)]">
         {label}
       </span>
       {children}
