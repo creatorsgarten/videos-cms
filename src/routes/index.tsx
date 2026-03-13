@@ -3,6 +3,7 @@ import { useLiveQuery } from '@tanstack/react-db'
 import { useEffect, useRef, useState } from 'react'
 import { FolderOpen, RefreshCw, AlertCircle, ChevronRight } from 'lucide-react'
 import { Button } from '#/components/ui/button'
+import { ListItem } from '#/components/ui/list-item'
 import {
   openDirectory,
   loadPersistedDirectory,
@@ -192,21 +193,22 @@ function HomePage() {
                   key={event}
                   to="/videos"
                   search={{ event }}
-                  className="flex items-center justify-between rounded-md px-4 py-3 transition-colors hover:bg-gray-100"
                 >
-                  <div>
-                    <p className="font-medium">{event}</p>
-                    <p className="text-xs text-gray-400">
-                      {stats.total} videos, {stats.draft} draft
-                      {stats.lastPublishedDate && (
-                        <>
-                          {' '}
-                          · last publish: {stats.lastPublishedDate}
-                        </>
-                      )}
-                    </p>
-                  </div>
-                  <ChevronRight size={16} className="text-gray-400" />
+                  <ListItem className="justify-between">
+                    <div>
+                      <p className="font-medium">{event}</p>
+                      <p className="text-xs text-gray-400">
+                        {stats.total} videos, {stats.draft} draft
+                        {stats.lastPublishedDate && (
+                          <>
+                            {' '}
+                            · last publish: {stats.lastPublishedDate}
+                          </>
+                        )}
+                      </p>
+                    </div>
+                    <ChevronRight size={16} className="text-gray-400" />
+                  </ListItem>
                 </Link>
               ))}
           </div>

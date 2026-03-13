@@ -3,6 +3,7 @@ import { useLiveQuery } from '@tanstack/react-db'
 import { useState } from 'react'
 import { ChevronLeft } from 'lucide-react'
 import { Input } from '#/components/ui/input'
+import { ListItem } from '#/components/ui/list-item'
 import { videosCollection } from '../../packlets/video-store'
 
 export const Route = createFileRoute('/videos/')({
@@ -98,17 +99,18 @@ function VideoListPage() {
                       key={v.id}
                       to="/videos/$event/$slug"
                       params={{ event: v.event, slug: v.slug }}
-                      className="flex items-center gap-3 rounded-md px-4 py-3 text-sm transition-colors hover:bg-gray-100"
                     >
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-medium">{v.title}</p>
-                        {v.speaker && (
-                          <p className="truncate text-xs text-gray-400">
-                            {v.speaker}
-                          </p>
-                        )}
-                      </div>
-                      <PublishedBadge published={v.published} />
+                      <ListItem className="gap-3 justify-between">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-medium">{v.title}</p>
+                          {v.speaker && (
+                            <p className="truncate text-xs text-gray-400">
+                              {v.speaker}
+                            </p>
+                          )}
+                        </div>
+                        <PublishedBadge published={v.published} />
+                      </ListItem>
                     </Link>
                   ))}
               </div>
