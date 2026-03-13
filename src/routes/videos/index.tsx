@@ -104,11 +104,10 @@ function VideoListPage() {
                       <ListItem className="gap-3 justify-between">
                         <div className="min-w-0 flex-1">
                           <p className="truncate font-medium">{v.title}</p>
-                          {v.speaker && (
-                            <p className="truncate text-xs text-gray-400">
-                              {v.speaker}
-                            </p>
-                          )}
+                          <div className="flex flex-wrap gap-2 text-xs text-gray-400">
+                            {v.speaker && <p className="truncate">{v.speaker}</p>}
+                            <p className="truncate font-mono text-gray-500">{v.slug}</p>
+                          </div>
                         </div>
                         <PublishedBadge published={v.published} />
                       </ListItem>
