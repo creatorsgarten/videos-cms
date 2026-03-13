@@ -77,21 +77,22 @@ function HomePage() {
   const hasVideos = (videos?.length ?? 0) > 0
 
   // Group by event for the event index
-  type EventStats = { total: number; published: number; lastPublishedDate: string | null }
+  type EventStats = { total: number; draft: number; lastPublishedDate: string | null }
   const grouped = (videos ?? []).reduce<Record<string, EventStats>>((acc, v) => {
     if (!acc[v.event]) {
-      acc[v.event] = { total: 0, published: 0, lastPublishedDate: null }
+      acc[v.event] = { total: 0, draft: 0, lastPublishedDate: null }
     }
     const eventStats = acc[v.event]!
     eventStats.total++
-    if (v.published === true || typeof v.published === 'string') {
-      eventStats.published++
-      // Track the latest published date
-      if (v.publishedDate) {
-        const current = eventStats.lastPublishedDate
-        if (!current || v.publishedDate > current) {
-          eventStats.lastPublishedDate = v.publishedDate as string
-        }
+    // Count drafts (unpublished videos - those without published date/value)
+    if (!v.published) {
+      eventStats.draft++
+    }
+    // Track the latest published date
+    if (v.publishedDate) {
+      const current = eventStats.lastPublishedDate
+      if (!current || v.publishedDate > current) {
+        eventStats.lastPublishedDate = v.publishedDate as string
       }
     }
     return acc
@@ -176,11 +177,11 @@ function HomePage() {
                 if (aIsArchive !== bIsArchive) {
                   return aIsArchive ? 1 : -1
                 }
-                // First: events with unpublished videos come first
-                const aHasUnpublished = statsA.published < statsA.total
-                const bHasUnpublished = statsB.published < statsB.total
-                if (aHasUnpublished !== bHasUnpublished) {
-                  return aHasUnpublished ? -1 : 1
+                // First: events with drafts come first
+                const aHasDrafts = statsA.draft > 0
+                const bHasDrafts = statsB.draft > 0
+                if (aHasDrafts !== bHasDrafts) {
+                  return aHasDrafts ? -1 : 1
                 }
                 // Second: sort by last published date (newest first)
                 const aDate = statsA.lastPublishedDate ?? ''
@@ -197,7 +198,13 @@ function HomePage() {
                   <div>
                     <p className="font-medium">{event}</p>
                     <p className="text-xs text-gray-400">
-                      {stats.total} videos · {stats.published} published
+                      {stats.total} videos, {stats.draft} draft
+                      {stats.lastPublishedDate && (
+                        <>
+                          {' '}
+                          · last publish: {stats.lastPublishedDate}
+                        </>
+                      )}
                     </p>
                   </div>
                   <ChevronRight size={16} className="text-gray-400" />
