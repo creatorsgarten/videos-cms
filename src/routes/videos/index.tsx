@@ -61,7 +61,8 @@ function VideoListPage() {
         </h1>
         {eventFilter && (
           <Link
-            to="/videos/"
+            to="/videos"
+            search={{ event: undefined }}
             className="mt-1 text-sm text-blue-600 hover:underline"
           >
             Show all events

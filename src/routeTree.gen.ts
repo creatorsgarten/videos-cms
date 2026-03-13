@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as VideosIndexRouteImport } from './routes/videos/index'
 import { Route as VideosEventSlugRouteImport } from './routes/videos/$event.$slug'
 
 const AboutRoute = AboutRouteImport.update({
@@ -23,6 +24,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const VideosIndexRoute = VideosIndexRouteImport.update({
+  id: '/videos/',
+  path: '/videos/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const VideosEventSlugRoute = VideosEventSlugRouteImport.update({
   id: '/videos/$event/$slug',
   path: '/videos/$event/$slug',
@@ -32,30 +38,34 @@ const VideosEventSlugRoute = VideosEventSlugRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/videos/': typeof VideosIndexRoute
   '/videos/$event/$slug': typeof VideosEventSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/videos': typeof VideosIndexRoute
   '/videos/$event/$slug': typeof VideosEventSlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/videos/': typeof VideosIndexRoute
   '/videos/$event/$slug': typeof VideosEventSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/about' | '/videos/$event/$slug'
+  fullPaths: '/' | '/about' | '/videos/' | '/videos/$event/$slug'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about' | '/videos/$event/$slug'
-  id: '__root__' | '/' | '/about' | '/videos/$event/$slug'
+  to: '/' | '/about' | '/videos' | '/videos/$event/$slug'
+  id: '__root__' | '/' | '/about' | '/videos/' | '/videos/$event/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
+  VideosIndexRoute: typeof VideosIndexRoute
   VideosEventSlugRoute: typeof VideosEventSlugRoute
 }
 
@@ -75,6 +85,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/videos/': {
+      id: '/videos/'
+      path: '/videos'
+      fullPath: '/videos/'
+      preLoaderRoute: typeof VideosIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/videos/$event/$slug': {
       id: '/videos/$event/$slug'
       path: '/videos/$event/$slug'
@@ -88,6 +105,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
+  VideosIndexRoute: VideosIndexRoute,
   VideosEventSlugRoute: VideosEventSlugRoute,
 }
 export const routeTree = rootRouteImport

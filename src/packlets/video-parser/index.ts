@@ -44,7 +44,6 @@ export interface ParsedVideo {
   data: VideoFrontMatter
   /** Markdown body after frontmatter */
   content: string
-  fileHandle: FileSystemFileHandle
 }
 
 export interface ParseResult {

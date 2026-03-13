@@ -78,7 +78,7 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
       managed: video.data.managed,
       publishedEnabled: video.data.published != null,
       publishedValue:
-        video.data.published === true ? '' : (video.data.published ?? ''),
+        typeof video.data.published === 'string' ? video.data.published : '',
       description: video.data.description ?? '',
       englishDescription: video.data.englishDescription ?? '',
       tagsStr: (video.data.tags ?? []).join(', '),
@@ -472,7 +472,8 @@ function SubtitleUploads({
   form,
 }: {
   id: string
-  form: ReturnType<typeof useForm<any>>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  form: any
 }) {
   const enRef = useRef<HTMLInputElement>(null)
   const thRef = useRef<HTMLInputElement>(null)
@@ -503,7 +504,7 @@ function SubtitleUploads({
             <div key={lang} className="flex items-center gap-3">
               <form.Field
                 name={fieldName}
-                children={(f) => (
+                children={(f: any) => (
                   <label className="flex cursor-pointer items-center gap-2 text-sm">
                     <input
                       type="checkbox"

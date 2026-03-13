@@ -57,7 +57,7 @@ export async function scanVideos(
         const { data, content } = parseVideoFile(text)
         const id = `${event}/${slug}`
         const fh = fileHandle as FileSystemFileHandle
-        const record: VideoRecord = { id, event, slug, data, content, fileHandle: fh }
+        const record: VideoRecord = { id, event, slug, data, content }
 
         if (currentIds.has(id)) {
           videosCollection.update(id, (draft) => {

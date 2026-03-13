@@ -146,7 +146,8 @@ function HomePage() {
               {Object.keys(grouped).length} events
             </p>
             <Link
-              to="/videos/"
+              to="/videos"
+              search={{ event: undefined }}
               className="text-sm text-blue-600 hover:underline"
             >
               All videos →
@@ -159,7 +160,7 @@ function HomePage() {
               .map(([event, stats]) => (
                 <Link
                   key={event}
-                  to="/videos/"
+                  to="/videos"
                   search={{ event }}
                   className="flex items-center justify-between px-4 py-3 hover:bg-gray-50"
                 >
