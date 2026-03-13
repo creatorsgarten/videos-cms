@@ -5,6 +5,7 @@ export function getRouter() {
   const router = createTanStackRouter({
     routeTree,
 
+    basepath: '/videos-cms/',
     scrollRestoration: true,
     defaultPreload: 'intent',
     defaultPreloadStaleTime: 0,

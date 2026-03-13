@@ -8,11 +8,19 @@ import viteReact from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
 const config = defineConfig({
+  base: '/videos-cms/',
   plugins: [
     devtools(),
     tsconfigPaths({ projects: ['./tsconfig.json'] }),
     tailwindcss(),
-    tanstackStart(),
+    tanstackStart({
+      spa: {
+        enabled: true,
+        prerender: {
+          outputPath: '/404.html',
+        },
+      },
+    }),
     viteReact(),
   ],
 })
