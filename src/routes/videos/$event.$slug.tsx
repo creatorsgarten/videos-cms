@@ -4,7 +4,7 @@ import { useForm } from '@tanstack/react-form'
 import React, { useRef, useState } from 'react'
 import yaml from 'js-yaml'
 import { z } from 'zod'
-import { CheckCircle, Loader2, AlertCircle, Upload, Trash2, X } from 'lucide-react'
+import { CheckCircle, Loader2, AlertCircle, Upload, Trash2 } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -17,6 +17,7 @@ import { Input } from '#/components/ui/input'
 import { Textarea } from '#/components/ui/textarea'
 import { Checkbox } from '#/components/ui/checkbox'
 import { Label } from '#/components/ui/label'
+import { DatePicker } from '#/components/ui/date-picker'
 import {
   videosCollection,
   getVideoById,
@@ -488,35 +489,30 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
             }}
             children={(f) => (
               <div className="space-y-2">
-                <label className="block">
-                  <span className="mb-1 block text-xs font-medium text-[var(--sea-ink-soft)]">
-                    Publish Date
-                  </span>
-                  <div className="flex gap-2">
-                    <Input
-                      aria-label="Publish Date"
-                      type="date"
-                      value={f.state.value.split('T')[0] || ''}
-                      onChange={(e) => f.handleChange(e.target.value)}
-                      onBlur={f.handleBlur}
-                      className="flex-1"
-                    />
-                    {f.state.value && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => f.handleChange('')}
-                        title="Clear publish date"
-                      >
-                        <X size={16} />
-                      </Button>
-                    )}
-                  </div>
-                  <p className="mt-1 text-xs text-[var(--sea-ink-soft)]">
-                    Leave empty for draft. Today publishes immediately, future dates schedule on YouTube.
-                  </p>
+                <label className="block text-xs font-medium text-[var(--sea-ink-soft)]">
+                  Publish Date
                 </label>
+                <div className="flex gap-2">
+                  <DatePicker
+                    value={f.state.value.split('T')[0] || ''}
+                    onChange={(date) => f.handleChange(date)}
+                    placeholder="Pick a date..."
+                  />
+                  {f.state.value && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => f.handleChange('')}
+                      title="Clear publish date"
+                    >
+                      <Trash2 size={16} />
+                    </Button>
+                  )}
+                </div>
+                <p className="mt-1 text-xs text-[var(--sea-ink-soft)]">
+                  Leave empty for draft. Today publishes immediately, future dates schedule on YouTube.
+                </p>
                 <FieldError errors={f.state.meta.errors} />
               </div>
             )}

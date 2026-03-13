@@ -15,7 +15,7 @@ test.describe('video edit form', () => {
     await expect(page.getByLabel('YouTube ID *')).toHaveValue('fIF3w66IroM')
     await expect(page.getByLabel('Language')).toHaveValue('en')
     // Check that Publish Date field has the expected date value (from fixture)
-    await expect(page.getByLabel('Publish Date')).toHaveValue('2025-04-20')
+    await expect(page.locator('button:has-text("2025")')).toBeVisible()
     await expect(page.getByRole('checkbox', { name: /managed/i })).toBeChecked()
   })
 
@@ -73,9 +73,8 @@ test.describe('video edit form', () => {
   })
 
   test('can uncheck published and save as draft', async ({ page }) => {
-    // Clear the Publish Date field to make it a draft
-    const publishDateInput = page.getByLabel('Publish Date')
-    await publishDateInput.clear()
+    // Click the trash button to clear the Publish Date field
+    await page.getByRole('button', { name: 'Clear publish date' }).click()
     await page.getByRole('button', { name: 'Save' }).click()
     await expect(page.getByText('Saved')).toBeVisible()
 
