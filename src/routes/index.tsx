@@ -1,87 +1,221 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
+import { useLiveQuery } from '@tanstack/react-db'
+import { useEffect, useRef, useState } from 'react'
+import { FolderOpen, RefreshCw, AlertCircle } from 'lucide-react'
+import {
+  openDirectory,
+  loadPersistedDirectory,
+  ensurePermission,
+} from '../packlets/fs'
+import { scanVideos, videosCollection } from '../packlets/video-store'
 
-export const Route = createFileRoute('/')({ component: App })
+export const Route = createFileRoute('/')({ component: HomePage })
 
-function App() {
+type Status =
+  | { type: 'idle' }
+  | { type: 'requesting-permission' }
+  | { type: 'scanning' }
+  | { type: 'ready' }
+  | { type: 'error'; message: string }
+
+function HomePage() {
+  const [dirName, setDirName] = useState<string | null>(null)
+  const [status, setStatus] = useState<Status>({ type: 'idle' })
+  const [search, setSearch] = useState('')
+  const initialized = useRef(false)
+
+  const { data: videos } = useLiveQuery((q) =>
+    q.from({ v: videosCollection }).select(({ v }) => ({
+      id: v.id,
+      event: v.event,
+      slug: v.slug,
+      title: v.data.title,
+      speaker: v.data.speaker,
+      youtube: v.data.youtube,
+      published: v.data.published,
+    })),
+  )
+
+  async function loadDirectory(handle: FileSystemDirectoryHandle) {
+    setStatus({ type: 'requesting-permission' })
+    const granted = await ensurePermission(handle)
+    if (!granted) {
+      setStatus({ type: 'error', message: 'Permission denied.' })
+      return
+    }
+    setDirName(handle.name)
+    setStatus({ type: 'scanning' })
+    try {
+      await scanVideos(handle)
+      setStatus({ type: 'ready' })
+    } catch (e) {
+      setStatus({ type: 'error', message: String(e) })
+    }
+  }
+
+  useEffect(() => {
+    if (initialized.current) return
+    initialized.current = true
+    loadPersistedDirectory().then((handle) => {
+      if (handle) loadDirectory(handle)
+    })
+  }, [])
+
+  async function handleOpen() {
+    try {
+      const handle = await openDirectory()
+      await loadDirectory(handle)
+    } catch (e: any) {
+      if (e?.name !== 'AbortError') {
+        setStatus({ type: 'error', message: String(e) })
+      }
+    }
+  }
+
+  async function handleRefresh() {
+    const handle = await loadPersistedDirectory()
+    if (handle) await loadDirectory(handle)
+  }
+
+  // Group and filter videos
+  const filtered = (videos ?? []).filter((v) => {
+    if (!search) return true
+    const q = search.toLowerCase()
+    return (
+      v.title.toLowerCase().includes(q) ||
+      v.slug.toLowerCase().includes(q) ||
+      v.event.toLowerCase().includes(q) ||
+      v.speaker?.toLowerCase().includes(q)
+    )
+  })
+
+  const grouped = filtered.reduce<Record<string, typeof filtered>>((acc, v) => {
+    ;(acc[v.event] ??= []).push(v)
+    return acc
+  }, {})
+
+  const hasVideos = (videos?.length ?? 0) > 0
+
   return (
-    <main className="page-wrap px-4 pb-8 pt-14">
-      <section className="island-shell rise-in relative overflow-hidden rounded-[2rem] px-6 py-10 sm:px-10 sm:py-14">
-        <div className="pointer-events-none absolute -left-20 -top-24 h-56 w-56 rounded-full bg-[radial-gradient(circle,rgba(79,184,178,0.32),transparent_66%)]" />
-        <div className="pointer-events-none absolute -bottom-20 -right-20 h-56 w-56 rounded-full bg-[radial-gradient(circle,rgba(47,106,74,0.18),transparent_66%)]" />
-        <p className="island-kicker mb-3">TanStack Start Base Template</p>
-        <h1 className="display-title mb-5 max-w-3xl text-4xl leading-[1.02] font-bold tracking-tight text-[var(--sea-ink)] sm:text-6xl">
-          Start simple, ship quickly.
-        </h1>
-        <p className="mb-8 max-w-2xl text-base text-[var(--sea-ink-soft)] sm:text-lg">
-          This base starter intentionally keeps things light: two routes, clean
-          structure, and the essentials you need to build from scratch.
-        </p>
-        <div className="flex flex-wrap gap-3">
-          <a
-            href="/about"
-            className="rounded-full border border-[rgba(50,143,151,0.3)] bg-[rgba(79,184,178,0.14)] px-5 py-2.5 text-sm font-semibold text-[var(--lagoon-deep)] no-underline transition hover:-translate-y-0.5 hover:bg-[rgba(79,184,178,0.24)]"
-          >
-            About This Starter
-          </a>
-          <a
-            href="https://tanstack.com/router"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded-full border border-[rgba(23,58,64,0.2)] bg-white/50 px-5 py-2.5 text-sm font-semibold text-[var(--sea-ink)] no-underline transition hover:-translate-y-0.5 hover:border-[rgba(23,58,64,0.35)]"
-          >
-            Router Guide
-          </a>
+    <main className="mx-auto max-w-4xl px-4 py-8">
+      <div className="mb-6 flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">Videos CMS</h1>
+          {dirName && (
+            <p className="mt-1 text-sm text-gray-500">
+              Folder: <span className="font-mono">{dirName}</span>
+            </p>
+          )}
         </div>
-      </section>
-
-      <section className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {[
-          [
-            'Type-Safe Routing',
-            'Routes and links stay in sync across every page.',
-          ],
-          [
-            'Server Functions',
-            'Call server code from your UI without creating API boilerplate.',
-          ],
-          [
-            'Streaming by Default',
-            'Ship progressively rendered responses for faster experiences.',
-          ],
-          [
-            'Tailwind Native',
-            'Design quickly with utility-first styling and reusable tokens.',
-          ],
-        ].map(([title, desc], index) => (
-          <article
-            key={title}
-            className="island-shell feature-card rise-in rounded-2xl p-5"
-            style={{ animationDelay: `${index * 90 + 80}ms` }}
+        <div className="flex gap-2">
+          {hasVideos && (
+            <button
+              onClick={handleRefresh}
+              disabled={status.type === 'scanning'}
+              className="flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm hover:bg-gray-50 disabled:opacity-50"
+            >
+              <RefreshCw
+                size={14}
+                className={status.type === 'scanning' ? 'animate-spin' : ''}
+              />
+              Refresh
+            </button>
+          )}
+          <button
+            onClick={handleOpen}
+            className="flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700"
           >
-            <h2 className="mb-2 text-base font-semibold text-[var(--sea-ink)]">
-              {title}
-            </h2>
-            <p className="m-0 text-sm text-[var(--sea-ink-soft)]">{desc}</p>
-          </article>
-        ))}
-      </section>
+            <FolderOpen size={14} />
+            {hasVideos ? 'Change folder' : 'Open folder'}
+          </button>
+        </div>
+      </div>
 
-      <section className="island-shell mt-8 rounded-2xl p-6">
-        <p className="island-kicker mb-2">Quick Start</p>
-        <ul className="m-0 list-disc space-y-2 pl-5 text-sm text-[var(--sea-ink-soft)]">
-          <li>
-            Edit <code>src/routes/index.tsx</code> to customize the home page.
-          </li>
-          <li>
-            Update <code>src/components/Header.tsx</code> and{' '}
-            <code>src/components/Footer.tsx</code> for brand links.
-          </li>
-          <li>
-            Add routes in <code>src/routes</code> and tweak visual tokens in{' '}
-            <code>src/styles.css</code>.
-          </li>
-        </ul>
-      </section>
+      {status.type === 'error' && (
+        <div className="mb-4 flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          <AlertCircle size={16} className="mt-0.5 shrink-0" />
+          {status.message}
+        </div>
+      )}
+
+      {status.type === 'scanning' && (
+        <p className="text-sm text-gray-500">Scanning files…</p>
+      )}
+
+      {!hasVideos && status.type !== 'scanning' && (
+        <div className="rounded-lg border-2 border-dashed p-16 text-center text-gray-400">
+          <FolderOpen size={32} className="mx-auto mb-3 opacity-40" />
+          <p className="text-sm">
+            Open the <span className="font-mono">videos</span> repository folder
+            to get started.
+          </p>
+        </div>
+      )}
+
+      {hasVideos && (
+        <>
+          <input
+            type="search"
+            placeholder="Search by title, speaker, event…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="mb-6 w-full rounded-md border px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+          />
+
+          <div className="space-y-6">
+            {Object.entries(grouped)
+              .sort(([a], [b]) => b.localeCompare(a))
+              .map(([event, items]) => (
+                <section key={event}>
+                  <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                    {event} — {items.length}
+                  </h2>
+                  <div className="divide-y rounded-lg border">
+                    {items
+                      .sort((a, b) => a.slug.localeCompare(b.slug))
+                      .map((v) => (
+                        <Link
+                          key={v.id}
+                          to="/videos/$event/$slug"
+                          params={{ event: v.event, slug: v.slug }}
+                          className="flex items-center gap-3 px-4 py-3 text-sm hover:bg-gray-50"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate font-medium">{v.title}</p>
+                            {v.speaker && (
+                              <p className="truncate text-xs text-gray-400">
+                                {v.speaker}
+                              </p>
+                            )}
+                          </div>
+                          <PublishedBadge published={v.published} />
+                        </Link>
+                      ))}
+                  </div>
+                </section>
+              ))}
+          </div>
+        </>
+      )}
     </main>
+  )
+}
+
+function PublishedBadge({
+  published,
+}: {
+  published: boolean | string | undefined
+}) {
+  if (published === true || typeof published === 'string') {
+    return (
+      <span className="shrink-0 rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-700">
+        published
+      </span>
+    )
+  }
+  return (
+    <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
+      draft
+    </span>
   )
 }
