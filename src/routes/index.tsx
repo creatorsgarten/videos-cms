@@ -25,20 +25,11 @@ function HomePage() {
   const initialized = useRef(false)
 
   const { data: videos } = useLiveQuery((q) =>
-    q.from({ v: videosCollection }).select(({ v }) => {
-      const published = v.data.published
-      let publishedDate: string | undefined = undefined
-      // Extract publishedDate if published is a date string (YYYY-MM-DD format)
-      if (typeof published === 'string' && /^\d{4}-\d{2}-\d{2}/.test(published)) {
-        publishedDate = published
-      }
-      return {
-        id: v.id,
-        event: v.event,
-        published,
-        publishedDate,
-      }
-    }),
+    q.from({ v: videosCollection }).select(({ v }) => ({
+      id: v.id,
+      event: v.event,
+      published: v.data.published,
+    })),
   )
 
   async function loadDirectory(handle: FileSystemDirectoryHandle) {
@@ -92,15 +83,15 @@ function HomePage() {
     }
     const eventStats = acc[v.event]!
     eventStats.total++
-    // Count drafts (unpublished videos - those without published date/value)
+    // Count drafts (unpublished videos)
     if (!v.published) {
       eventStats.draft++
     }
-    // Track the latest published date
-    if (v.publishedDate) {
+    // Track the latest published date (if published is a date string)
+    if (typeof v.published === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v.published)) {
       const current = eventStats.lastPublishedDate
-      if (!current || v.publishedDate > current) {
-        eventStats.lastPublishedDate = v.publishedDate
+      if (!current || v.published > current) {
+        eventStats.lastPublishedDate = v.published
       }
     }
     return acc
