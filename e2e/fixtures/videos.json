@@ -1,0 +1,6 @@
+{
+  "data/videos/bkkjs22/make-pull-requests-great-again.md": "---\ntitle: Make Pull Requests Great Again\nspeaker: Tobias Meixner\nyoutube: fIF3w66IroM\nmanaged: true\npublished: '2025-04-20'\nlanguage: en\n---\n",
+  "data/videos/bkkjs22/rag-ai.md": "---\ntitle: Building RAG AI Systems\nspeaker: Alice Smith\nyoutube: abc123xyz\nmanaged: true\nlanguage: en\n---\n\nTalk about retrieval-augmented generation.\n",
+  "data/videos/creatorsgarten14/open-source-culture.md": "---\ntitle: Open Source Culture\nspeaker: Bob Lee\nyoutube: def456uvw\nmanaged: false\nlanguage: th\n---\n",
+  "data/videos/creatorsgarten14/web-performance.md": "---\ntitle: Web Performance Tips\nyoutube: ghi789rst\nmanaged: true\npublished: true\nlanguage: en\ntags:\n  - web\n  - performance\n---\n\nContent about web performance.\n"
+}

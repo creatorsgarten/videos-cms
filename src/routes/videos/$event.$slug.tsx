@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useLiveQuery } from '@tanstack/react-db'
-import { videosCollection } from '../../packlets/video-store'
+import { videosCollection, getVideoById } from '../../packlets/video-store'
 
 export const Route = createFileRoute('/videos/$event/$slug')({
   component: EditPage,
@@ -10,14 +10,14 @@ function EditPage() {
   const { event, slug } = Route.useParams()
   const navigate = useNavigate()
 
-  const { data: results } = useLiveQuery((q) =>
-    q
-      .from({ v: videosCollection })
-      .where(({ v }) => v.id === `${event}/${slug}`)
-      .select(({ v }) => v),
-  )
+  const id = `${event}/${slug}`
 
-  const video = results?.[0]
+  // useLiveQuery can be empty on the first render after SPA navigation —
+  // fall back to the synchronous cache until it resolves.
+  const { data: liveVideos } = useLiveQuery((q) =>
+    q.from({ v: videosCollection }).select(({ v }) => v),
+  )
+  const video = liveVideos?.find((v) => v.id === id) ?? getVideoById(id)
 
   if (!video) {
     return (

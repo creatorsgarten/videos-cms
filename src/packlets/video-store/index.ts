@@ -20,6 +20,12 @@ export const videosCollection = createCollection(
   }),
 )
 
+// Track current IDs so we can clear on rescan (TanStack DB has no getAll API)
+let currentIds = new Set<string>()
+
+// Module-level cache for synchronous reads (useLiveQuery can be async on first render)
+const videoCache = new Map<string, VideoRecord>()
+
 // ---------------------------------------------------------------------------
 // Scan
 // ---------------------------------------------------------------------------
@@ -29,9 +35,12 @@ export async function scanVideos(
   rootHandle: FileSystemDirectoryHandle,
 ): Promise<void> {
   // Clear existing records
-  for (const item of videosCollection.state.items.values()) {
-    videosCollection.delete(item.id)
+  for (const id of currentIds) {
+    videosCollection.delete(id)
   }
+  currentIds = new Set()
+  fileHandles.clear()
+  videoCache.clear()
 
   const dataHandle = await rootHandle.getDirectoryHandle('data')
   const videosHandle = await dataHandle.getDirectoryHandle('videos')
@@ -47,14 +56,12 @@ export async function scanVideos(
         const text = await readFile(fileHandle as FileSystemFileHandle)
         const { data, content } = parseVideoFile(text)
         const id = `${event}/${slug}`
-        videosCollection.insert({
-          id,
-          event,
-          slug,
-          data,
-          content,
-          fileHandle: fileHandle as FileSystemFileHandle,
-        })
+        const fh = fileHandle as FileSystemFileHandle
+        const record: VideoRecord = { id, event, slug, data, content, fileHandle: fh }
+        videosCollection.insert(record)
+        currentIds.add(id)
+        fileHandles.set(id, fh)
+        videoCache.set(id, record)
       } catch (e) {
         console.error(`Failed to parse ${event}/${slug}.md`, e)
       }
@@ -66,19 +73,30 @@ export async function scanVideos(
 // Save (write-through)
 // ---------------------------------------------------------------------------
 
+// Keep a separate map of fileHandles since we can't read back from the collection imperatively
+const fileHandles = new Map<string, FileSystemFileHandle>()
+
+/** Synchronous read — use when useLiveQuery hasn't resolved yet (e.g. first render after navigation) */
+export function getVideoById(id: string): VideoRecord | undefined {
+  return videoCache.get(id)
+}
+
 export async function saveVideo(
   id: string,
   data: VideoFrontMatter,
   content: string,
 ): Promise<void> {
-  const record = videosCollection.state.items.get(id)
-  if (!record) throw new Error(`Video not found: ${id}`)
+  const handle = fileHandles.get(id)
+  if (!handle) throw new Error(`Video not found: ${id}`)
 
   const text = serializeVideoFile(data, content)
-  await writeFile(record.fileHandle, text)
+  await writeFile(handle, text)
 
   videosCollection.update(id, (draft) => {
     draft.data = data
     draft.content = content
   })
+
+  const cached = videoCache.get(id)
+  if (cached) videoCache.set(id, { ...cached, data, content })
 }

@@ -9,6 +9,12 @@ export async function openDirectory(): Promise<FileSystemDirectoryHandle> {
 }
 
 export async function loadPersistedDirectory(): Promise<FileSystemDirectoryHandle | null> {
+  // Allow E2E tests to inject a mock handle without triggering showDirectoryPicker
+  const mock = (window as any).__mockDirectoryHandle as
+    | FileSystemDirectoryHandle
+    | undefined
+  if (mock) return mock
+
   const handle = await get<FileSystemDirectoryHandle>(IDB_KEY)
   return handle ?? null
 }

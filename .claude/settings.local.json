@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:tanstack.com)",
+      "Bash(pnpm test:*)",
+      "WebSearch",
+      "Bash(pnpm test:e2e:*)"
+    ]
+  }
+}

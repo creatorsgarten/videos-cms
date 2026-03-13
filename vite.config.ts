@@ -9,6 +9,9 @@ import tailwindcss from '@tailwindcss/vite'
 
 const config = defineConfig({
   base: '/videos-cms/',
+  test: {
+    exclude: ['e2e/**', 'node_modules/**'],
+  },
   plugins: [
     devtools(),
     tsconfigPaths({ projects: ['./tsconfig.json'] }),
