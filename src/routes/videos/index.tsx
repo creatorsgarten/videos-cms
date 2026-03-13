@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { ChevronLeft } from 'lucide-react'
 import { Input } from '#/components/ui/input'
 import { ListItem } from '#/components/ui/list-item'
+import { Badge } from '#/components/ui/badge'
 import { videosCollection } from '../../packlets/video-store'
 
 export const Route = createFileRoute('/videos/')({
@@ -128,15 +129,7 @@ function PublishedBadge({
   published: boolean | string | undefined
 }) {
   if (published === true || typeof published === 'string') {
-    return (
-      <span className="shrink-0 rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-700">
-        published
-      </span>
-    )
+    return <Badge variant="success">published</Badge>
   }
-  return (
-    <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
-      draft
-    </span>
-  )
+  return <Badge variant="muted">draft</Badge>
 }
