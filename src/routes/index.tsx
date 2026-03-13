@@ -14,7 +14,7 @@ export const Route = createFileRoute('/')({ component: HomePage })
 type Status =
   | { type: 'idle' }
   | { type: 'requesting-permission' }
-  | { type: 'scanning' }
+  | { type: 'scanning'; count: number }
   | { type: 'ready' }
   | { type: 'error'; message: string }
 
@@ -39,9 +39,9 @@ function HomePage() {
       return
     }
     setDirName(handle.name)
-    setStatus({ type: 'scanning' })
+    setStatus({ type: 'scanning', count: 0 })
     try {
-      await scanVideos(handle)
+      await scanVideos(handle, (count) => setStatus({ type: 'scanning', count }))
       setStatus({ type: 'ready' })
     } catch (e) {
       setStatus({ type: 'error', message: String(e) })
@@ -108,7 +108,7 @@ function HomePage() {
                 size={14}
                 className={status.type === 'scanning' ? 'animate-spin' : ''}
               />
-              Refresh
+              {status.type === 'scanning' ? `${status.count} files…` : 'Refresh'}
             </button>
           )}
           <button
@@ -126,10 +126,6 @@ function HomePage() {
           <AlertCircle size={16} className="mt-0.5 shrink-0" />
           {status.message}
         </div>
-      )}
-
-      {status.type === 'scanning' && (
-        <p className="text-sm text-gray-500">Scanning files…</p>
       )}
 
       {!hasVideos && status.type !== 'scanning' && (

@@ -30,21 +30,20 @@ const videoCache = new Map<string, VideoRecord>()
 // Scan
 // ---------------------------------------------------------------------------
 
-/** Traverse data/videos/<event>/<slug>.md and load all videos into the collection. */
+/** Traverse data/videos/<event>/<slug>.md and load all videos into the collection.
+ *  Non-destructive: upserts records as they are found, then removes any that
+ *  disappeared from disk.  onProgress is called with the running file count. */
 export async function scanVideos(
   rootHandle: FileSystemDirectoryHandle,
+  onProgress?: (count: number) => void,
 ): Promise<void> {
-  // Clear existing records
-  for (const id of currentIds) {
-    videosCollection.delete(id)
-  }
-  currentIds = new Set()
-  fileHandles.clear()
-  eventDirHandles.clear()
-  videoCache.clear()
+  const newIds = new Set<string>()
+  const newFileHandles = new Map<string, FileSystemFileHandle>()
+  const newEventDirHandles = new Map<string, FileSystemDirectoryHandle>()
 
   const dataHandle = await rootHandle.getDirectoryHandle('data')
   const videosHandle = await dataHandle.getDirectoryHandle('videos')
+  let count = 0
 
   for await (const [event, eventHandle] of videosHandle.entries()) {
     if (eventHandle.kind !== 'directory') continue
@@ -59,16 +58,47 @@ export async function scanVideos(
         const id = `${event}/${slug}`
         const fh = fileHandle as FileSystemFileHandle
         const record: VideoRecord = { id, event, slug, data, content, fileHandle: fh }
-        videosCollection.insert(record)
-        currentIds.add(id)
-        fileHandles.set(id, fh)
-        eventDirHandles.set(id, eventHandle as FileSystemDirectoryHandle)
+
+        if (currentIds.has(id)) {
+          videosCollection.update(id, (draft) => {
+            draft.data = data
+            draft.content = content
+          })
+        } else {
+          videosCollection.insert(record)
+        }
+
+        newIds.add(id)
+        newFileHandles.set(id, fh)
+        newEventDirHandles.set(id, eventHandle as FileSystemDirectoryHandle)
         videoCache.set(id, record)
+
+        count++
+        onProgress?.(count)
       } catch (e) {
         console.error(`Failed to parse ${event}/${slug}.md`, e)
       }
     }
   }
+
+  // Remove records that no longer exist on disk
+  for (const id of currentIds) {
+    if (!newIds.has(id)) {
+      videosCollection.delete(id)
+      videoCache.delete(id)
+    }
+  }
+
+  currentIds = newIds
+  // Swap in the new handle maps (keep old entries not in newIds removed)
+  for (const id of fileHandles.keys()) {
+    if (!newIds.has(id)) fileHandles.delete(id)
+  }
+  for (const [id, fh] of newFileHandles) fileHandles.set(id, fh)
+  for (const id of eventDirHandles.keys()) {
+    if (!newIds.has(id)) eventDirHandles.delete(id)
+  }
+  for (const [id, dh] of newEventDirHandles) eventDirHandles.set(id, dh)
 }
 
 // ---------------------------------------------------------------------------
