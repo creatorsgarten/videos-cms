@@ -47,10 +47,11 @@ export async function injectDirectoryHandle(
           if (!node || node.kind !== 'directory') throw new Error(`Not a directory: ${child}`)
           return makeDirectoryHandle(child, node.entries)
         },
-        getFileHandle: async (child: string) => {
+        getFileHandle: async (child: string, options?: { create?: boolean }) => {
           const node = entries[child]
-          if (!node || node.kind !== 'file') throw new Error(`Not a file: ${child}`)
-          return makeFileHandle(child, node.contents)
+          if (node?.kind === 'file') return makeFileHandle(child, node.contents)
+          if (options?.create) return makeFileHandle(child, '')
+          throw new Error(`Not a file: ${child}`)
         },
         entries: async function* () {
           for (const [k, v] of Object.entries(entries) as any) {

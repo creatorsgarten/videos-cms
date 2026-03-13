@@ -1,14 +1,15 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useLiveQuery } from '@tanstack/react-db'
 import { useForm } from '@tanstack/react-form'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import yaml from 'js-yaml'
 import { z } from 'zod'
-import { CheckCircle, Loader2, AlertCircle } from 'lucide-react'
+import { CheckCircle, Loader2, AlertCircle, Upload } from 'lucide-react'
 import {
   videosCollection,
   getVideoById,
   saveVideo,
+  saveSubtitle,
   type VideoRecord,
 } from '../../packlets/video-store'
 import type { VideoFrontMatter } from '../../packlets/video-parser'
@@ -340,28 +341,7 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
           />
         </Field>
 
-        <div>
-          <p className="mb-1 text-xs font-medium text-gray-600">Subtitles</p>
-          <div className="flex gap-4">
-            {(['en', 'th'] as const).map((lang) => (
-              <form.Field
-                key={lang}
-                name={lang === 'en' ? 'subtitleEn' : 'subtitleTh'}
-                children={(f) => (
-                  <label className="flex cursor-pointer items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={f.state.value}
-                      onChange={(e) => f.handleChange(e.target.checked)}
-                      className="h-4 w-4 rounded"
-                    />
-                    {lang}
-                  </label>
-                )}
-              />
-            ))}
-          </div>
-        </div>
+        <SubtitleUploads id={id} form={form} />
       </fieldset>
 
       {/* ── Description ── */}
@@ -480,6 +460,98 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
         )}
       </div>
     </form>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Subtitle upload
+// ---------------------------------------------------------------------------
+
+function SubtitleUploads({
+  id,
+  form,
+}: {
+  id: string
+  form: ReturnType<typeof useForm<any>>
+}) {
+  const enRef = useRef<HTMLInputElement>(null)
+  const thRef = useRef<HTMLInputElement>(null)
+  const [status, setStatus] = useState<Record<string, 'uploading' | 'done' | 'error'>>({})
+
+  async function handleUpload(lang: 'en' | 'th', file: File) {
+    setStatus((s) => ({ ...s, [lang]: 'uploading' }))
+    try {
+      await saveSubtitle(id, lang, file)
+      // Auto-check the corresponding subtitle checkbox
+      form.setFieldValue(lang === 'en' ? 'subtitleEn' : 'subtitleTh', true)
+      setStatus((s) => ({ ...s, [lang]: 'done' }))
+    } catch (e) {
+      console.error(e)
+      setStatus((s) => ({ ...s, [lang]: 'error' }))
+    }
+  }
+
+  return (
+    <div>
+      <p className="mb-2 text-xs font-medium text-gray-600">Subtitles</p>
+      <div className="space-y-2">
+        {(['en', 'th'] as const).map((lang) => {
+          const fieldName = lang === 'en' ? 'subtitleEn' : 'subtitleTh'
+          const ref = lang === 'en' ? enRef : thRef
+          const st = status[lang]
+          return (
+            <div key={lang} className="flex items-center gap-3">
+              <form.Field
+                name={fieldName}
+                children={(f) => (
+                  <label className="flex cursor-pointer items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={f.state.value}
+                      onChange={(e) => f.handleChange(e.target.checked)}
+                      className="h-4 w-4 rounded"
+                    />
+                    {lang}
+                  </label>
+                )}
+              />
+              <button
+                type="button"
+                onClick={() => ref.current?.click()}
+                disabled={st === 'uploading'}
+                className="flex items-center gap-1.5 rounded border px-2 py-1 text-xs hover:bg-gray-50 disabled:opacity-50"
+              >
+                <Upload size={12} />
+                Upload .vtt
+              </button>
+              {st === 'done' && (
+                <span className="flex items-center gap-1 text-xs text-green-600">
+                  <CheckCircle size={12} /> uploaded
+                </span>
+              )}
+              {st === 'uploading' && (
+                <Loader2 size={12} className="animate-spin text-gray-400" />
+              )}
+              {st === 'error' && (
+                <span className="text-xs text-red-500">failed</span>
+              )}
+              <input
+                ref={ref}
+                type="file"
+                accept=".vtt"
+                className="hidden"
+                data-testid={`subtitle-upload-${lang}`}
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) handleUpload(lang, file)
+                  e.target.value = ''
+                }}
+              />
+            </div>
+          )
+        })}
+      </div>
+    </div>
   )
 }
 

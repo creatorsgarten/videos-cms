@@ -40,6 +40,7 @@ export async function scanVideos(
   }
   currentIds = new Set()
   fileHandles.clear()
+  eventDirHandles.clear()
   videoCache.clear()
 
   const dataHandle = await rootHandle.getDirectoryHandle('data')
@@ -61,6 +62,7 @@ export async function scanVideos(
         videosCollection.insert(record)
         currentIds.add(id)
         fileHandles.set(id, fh)
+        eventDirHandles.set(id, eventHandle as FileSystemDirectoryHandle)
         videoCache.set(id, record)
       } catch (e) {
         console.error(`Failed to parse ${event}/${slug}.md`, e)
@@ -73,8 +75,9 @@ export async function scanVideos(
 // Save (write-through)
 // ---------------------------------------------------------------------------
 
-// Keep a separate map of fileHandles since we can't read back from the collection imperatively
+// Keep separate maps since we can't read back from the collection imperatively
 const fileHandles = new Map<string, FileSystemFileHandle>()
+const eventDirHandles = new Map<string, FileSystemDirectoryHandle>()
 
 /** Synchronous read — use when useLiveQuery hasn't resolved yet (e.g. first render after navigation) */
 export function getVideoById(id: string): VideoRecord | undefined {
@@ -99,4 +102,19 @@ export async function saveVideo(
 
   const cached = videoCache.get(id)
   if (cached) videoCache.set(id, { ...cached, data, content })
+}
+
+export async function saveSubtitle(
+  id: string,
+  lang: 'en' | 'th',
+  file: File,
+): Promise<void> {
+  const cached = videoCache.get(id)
+  const dirHandle = eventDirHandles.get(id)
+  if (!cached || !dirHandle) throw new Error(`Video not found: ${id}`)
+
+  const filename = `${cached.slug}_${lang}.vtt`
+  const fh = await dirHandle.getFileHandle(filename, { create: true })
+  const text = await file.text()
+  await writeFile(fh, text)
 }

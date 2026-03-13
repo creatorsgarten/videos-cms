@@ -51,6 +51,27 @@ test.describe('video edit form', () => {
     await expect(page.getByText(/invalid yaml/i)).toBeVisible()
   })
 
+  test('uploads subtitle file and auto-checks the checkbox', async ({ page }) => {
+    const vttContent = 'WEBVTT\n\n00:00:01.000 --> 00:00:03.000\nHello world\n'
+    const enInput = page.locator('[data-testid="subtitle-upload-en"]')
+
+    await enInput.setInputFiles({
+      name: 'test_en.vtt',
+      mimeType: 'text/vtt',
+      buffer: Buffer.from(vttContent),
+    })
+
+    await expect(page.getByText('uploaded').first()).toBeVisible()
+
+    // The en subtitle checkbox should now be checked
+    await expect(page.getByRole('checkbox', { name: 'en' })).toBeChecked()
+
+    // The file should have been written
+    const writes = await page.evaluate(() => (window as any).__writes ?? {})
+    expect(Object.keys(writes)).toContain('make-pull-requests-great-again_en.vtt')
+    expect(writes['make-pull-requests-great-again_en.vtt']).toContain('Hello world')
+  })
+
   test('can uncheck published and save as draft', async ({ page }) => {
     await page.getByRole('checkbox', { name: /published/i }).uncheck()
     await page.getByRole('button', { name: 'Save' }).click()
