@@ -25,12 +25,20 @@ function HomePage() {
   const initialized = useRef(false)
 
   const { data: videos } = useLiveQuery((q) =>
-    q.from({ v: videosCollection }).select(({ v }) => ({
-      id: v.id,
-      event: v.event,
-      published: v.data.published,
-      publishedDate: typeof v.data.published === 'string' ? v.data.published : undefined,
-    })),
+    q.from({ v: videosCollection }).select(({ v }) => {
+      const published = v.data.published
+      let publishedDate: string | undefined = undefined
+      // Extract publishedDate if published is a date string (YYYY-MM-DD format)
+      if (typeof published === 'string' && /^\d{4}-\d{2}-\d{2}/.test(published)) {
+        publishedDate = published
+      }
+      return {
+        id: v.id,
+        event: v.event,
+        published,
+        publishedDate,
+      }
+    }),
   )
 
   async function loadDirectory(handle: FileSystemDirectoryHandle) {
@@ -92,7 +100,7 @@ function HomePage() {
     if (v.publishedDate) {
       const current = eventStats.lastPublishedDate
       if (!current || v.publishedDate > current) {
-        eventStats.lastPublishedDate = v.publishedDate as string
+        eventStats.lastPublishedDate = v.publishedDate
       }
     }
     return acc

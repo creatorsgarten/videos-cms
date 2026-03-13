@@ -17,7 +17,8 @@ test.describe('event index', () => {
   test('shows video count per event', async ({ page }) => {
     // Wait for scan to complete
     await expect(page.getByText('bkkjs22')).toBeVisible()
-    await expect(page.getByText(/2 videos/).first()).toBeVisible()
+    // Check for new format: "X videos, Y draft"
+    await expect(page.getByText('2 videos, 1 draft').first()).toBeVisible()
   })
 
   test('navigates to filtered list when clicking an event', async ({ page }) => {
