@@ -70,12 +70,18 @@ type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
   const [saveError, setSaveError] = useState('')
+  const [showYoutubeTitle, setShowYoutubeTitle] = useState(
+    !!video.data.youtubeTitle,
+  )
+
+  const youtubeTitle = video.data.youtubeTitle ?? ''
 
   const form = useForm({
     defaultValues: {
       title: video.data.title,
       speaker: video.data.speaker ?? '',
       tagline: video.data.tagline ?? '',
+      youtubeTitle: youtubeTitle,
       youtube: video.data.youtube,
       type: video.data.type,
       language: video.data.language,
@@ -119,22 +125,35 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
           value.subtitleTh && 'th',
         ].filter(Boolean) as string[]
 
-        const data: VideoFrontMatter = {
+        // Build new data, explicitly removing fields when not set
+        const newData: any = {
           title: value.title,
           youtube: value.youtube,
           managed: value.managed,
           type: value.type,
           language: value.language,
-          ...(value.speaker && { speaker: value.speaker }),
-          ...(value.tagline && { tagline: value.tagline }),
-          ...(value.description && { description: value.description }),
-          ...(value.englishDescription && {
-            englishDescription: value.englishDescription,
-          }),
-          ...(published != null && { published }),
-          ...(tags.length && { tags }),
-          ...(subtitles.length && { subtitles }),
-          ...(chapters && { chapters }),
+        }
+
+        // Add optional fields if present
+        if (value.speaker) newData.speaker = value.speaker
+        if (value.tagline) newData.tagline = value.tagline
+        if (showYoutubeTitle && value.youtubeTitle)
+          newData.youtubeTitle = value.youtubeTitle
+        if (value.description) newData.description = value.description
+        if (value.englishDescription)
+          newData.englishDescription = value.englishDescription
+        if (published != null) newData.published = published
+        if (tags.length) newData.tags = tags
+        if (subtitles.length) newData.subtitles = subtitles
+        if (chapters) newData.chapters = chapters
+
+        // Preserve fields from original that aren't being edited
+        const data: VideoFrontMatter = { ...video.data }
+        // Override with new values
+        Object.assign(data, newData)
+        // Explicitly remove published if unchecked
+        if (!value.publishedEnabled) {
+          delete data.published
         }
 
         await saveVideo(id, data, value.content)
@@ -197,6 +216,29 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
             )}
           />
         </Field>
+
+        {showYoutubeTitle && (
+          <form.Field
+            name="youtubeTitle"
+            children={(f) => (
+              <LocalizableTextInput
+                label="YouTube Title (optional)"
+                value={f.state.value}
+                onChange={f.handleChange}
+              />
+            )}
+          />
+        )}
+
+        {!showYoutubeTitle && (
+          <button
+            type="button"
+            onClick={() => setShowYoutubeTitle(true)}
+            className="text-xs text-blue-600 hover:underline"
+          >
+            [+ Customize YouTube Title]
+          </button>
+        )}
 
         <div className="grid grid-cols-2 gap-4">
           <Field label="Type">
@@ -596,4 +638,72 @@ function input(hasError = false) {
     'focus:border-blue-500 focus:ring-1 focus:ring-blue-500',
     hasError ? 'border-red-400' : 'border-gray-300',
   ].join(' ')
+}
+
+/** LocalizableText input that can toggle between plain string and { en, th } */
+function LocalizableTextInput({
+  value,
+  onChange,
+  label,
+  hasError = false,
+}: {
+  value: string | { en: string; th: string }
+  onChange: (v: string | { en: string; th: string }) => void
+  label: string
+  hasError?: boolean
+}) {
+  const isLocalized = typeof value === 'object'
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <Field label={label}>
+          <div />
+        </Field>
+        <button
+          type="button"
+          onClick={() => {
+            if (isLocalized) {
+              onChange(value.en || '')
+            } else {
+              onChange({ en: value, th: value })
+            }
+          }}
+          className="text-xs text-blue-600 hover:underline"
+        >
+          {isLocalized ? 'Use plain text' : 'Make localized'}
+        </button>
+      </div>
+      {isLocalized ? (
+        <div className="space-y-2">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-[var(--sea-ink-soft)]">
+              English
+            </label>
+            <input
+              className={input(hasError)}
+              value={value.en}
+              onChange={(e) => onChange({ ...value, en: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-[var(--sea-ink-soft)]">
+              Thai
+            </label>
+            <input
+              className={input(hasError)}
+              value={value.th}
+              onChange={(e) => onChange({ ...value, th: e.target.value })}
+            />
+          </div>
+        </div>
+      ) : (
+        <input
+          className={input(hasError)}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      )}
+    </div>
+  )
 }

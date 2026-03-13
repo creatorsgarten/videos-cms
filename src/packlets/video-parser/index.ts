@@ -1,5 +1,6 @@
 import yaml from 'js-yaml'
 import { z } from 'zod'
+import { format } from 'prettier'
 
 // ---------------------------------------------------------------------------
 // Schema (adapted from creatorsgarten/videos/src/Video.ts for browser use)
@@ -71,4 +72,22 @@ export function serializeVideoFile(
   const frontmatterStr = yaml.dump(data, { lineWidth: -1, quotingType: '"' })
   const body = content.trim()
   return `---\n${frontmatterStr}---\n${body ? `\n${body}\n` : ''}`
+}
+
+/** Serialize with prettier formatting for clean YAML output. */
+export async function serializeVideoFileFormatted(
+  data: VideoFrontMatter,
+  content: string,
+): Promise<string> {
+  const frontmatterStr = yaml.dump(data, { lineWidth: -1, quotingType: '"' })
+  const body = content.trim()
+  const unformatted = `---\n${frontmatterStr}---\n${body ? `\n${body}\n` : ''}`
+
+  try {
+    return await format(unformatted, { parser: 'markdown' })
+  } catch {
+    // Fallback to unformatted if prettier fails
+    console.warn('Prettier formatting failed, using unformatted YAML')
+    return unformatted
+  }
 }
