@@ -2,6 +2,7 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { useLiveQuery } from '@tanstack/react-db'
 import { useState } from 'react'
 import { ChevronLeft } from 'lucide-react'
+import { Input } from '#/components/ui/input'
 import { videosCollection } from '../../packlets/video-store'
 
 export const Route = createFileRoute('/videos/')({
@@ -71,12 +72,12 @@ function VideoListPage() {
         )}
       </div>
 
-      <input
+      <Input
         type="search"
         placeholder="Search by title, speaker, event…"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        className="mb-6 w-full rounded-md border px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+        className="mb-6"
       />
 
       <div className="space-y-6">

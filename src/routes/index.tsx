@@ -2,6 +2,7 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { useLiveQuery } from '@tanstack/react-db'
 import { useEffect, useRef, useState } from 'react'
 import { FolderOpen, RefreshCw, AlertCircle, ChevronRight } from 'lucide-react'
+import { Button } from '#/components/ui/button'
 import {
   openDirectory,
   loadPersistedDirectory,
@@ -110,25 +111,26 @@ function HomePage() {
         </div>
         <div className="flex gap-2">
           {hasVideos && (
-            <button
+            <Button
               onClick={handleRefresh}
               disabled={status.type === 'scanning'}
-              className="flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm hover:bg-gray-50 disabled:opacity-50"
+              variant="outline"
+              size="sm"
             >
               <RefreshCw
                 size={14}
                 className={status.type === 'scanning' ? 'animate-spin' : ''}
               />
               {status.type === 'scanning' ? `${status.count} files…` : 'Refresh'}
-            </button>
+            </Button>
           )}
-          <button
+          <Button
             onClick={handleOpen}
-            className="flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700"
+            size="sm"
           >
             <FolderOpen size={14} />
             {hasVideos ? 'Change folder' : 'Open folder'}
-          </button>
+          </Button>
         </div>
       </div>
 

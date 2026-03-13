@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useLiveQuery } from '@tanstack/react-db'
 import { useForm } from '@tanstack/react-form'
-import { useRef, useState } from 'react'
+import React, { useRef, useState } from 'react'
 import yaml from 'js-yaml'
 import { z } from 'zod'
 import { CheckCircle, Loader2, AlertCircle, Upload, Trash2 } from 'lucide-react'
@@ -13,6 +13,10 @@ import {
   DialogFooter,
 } from '#/components/ui/dialog'
 import { Button } from '#/components/ui/button'
+import { Input } from '#/components/ui/input'
+import { Textarea } from '#/components/ui/textarea'
+import { Checkbox } from '#/components/ui/checkbox'
+import { Label } from '#/components/ui/label'
 import {
   videosCollection,
   getVideoById,
@@ -198,8 +202,8 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
               validators={{ onChange: z.string().min(1, 'Required') }}
               children={(f) => (
                 <>
-                  <input
-                    className={input(f.state.meta.errors.length > 0)}
+                  <Input
+                    aria-label="Title *"
                     value={f.state.value}
                     onChange={(e) => f.handleChange(e.target.value)}
                     onBlur={f.handleBlur}
@@ -216,8 +220,8 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
               validators={{ onChange: z.string().min(1, 'Required') }}
               children={(f) => (
                 <>
-                  <input
-                    className={input(f.state.meta.errors.length > 0)}
+                  <Input
+                    aria-label="YouTube ID *"
                     value={f.state.value}
                     onChange={(e) => f.handleChange(e.target.value)}
                     onBlur={f.handleBlur}
@@ -237,7 +241,8 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
                 name="language"
                 children={(f) => (
                   <select
-                    className={input()}
+                    aria-label="Language"
+                    className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                     value={f.state.value}
                     onChange={(e) => f.handleChange(e.target.value as any)}
                   >
@@ -252,15 +257,14 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
               name="managed"
               children={(f) => (
                 <div className="space-y-1">
-                  <label className="flex cursor-pointer items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
+                  <div className="flex items-center gap-2">
+                    <Checkbox
                       checked={f.state.value}
-                      onChange={(e) => f.handleChange(e.target.checked)}
-                      className="h-4 w-4 rounded"
+                      onCheckedChange={f.handleChange}
+                      aria-label="Managed"
                     />
-                    Managed
-                  </label>
+                    <Label className="text-sm">Managed</Label>
+                  </div>
                   <p className="text-xs text-[var(--sea-ink-soft)]">
                     When enabled, this video's metadata will be synced to YouTube
                   </p>
@@ -331,8 +335,7 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
                 name="tagline"
                 children={(f) => (
                   <>
-                    <input
-                      className={input()}
+                    <Input
                       value={f.state.value}
                       onChange={(e) => f.handleChange(e.target.value)}
                       placeholder="Used in pitch titles"
@@ -366,8 +369,7 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
                         <Trash2 size={16} />
                       </button>
                     </div>
-                    <input
-                      className={input()}
+                    <Input
                       value={f.state.value}
                       onChange={(e) => f.handleChange(e.target.value)}
                       placeholder="Team name"
@@ -400,8 +402,7 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
               name="speaker"
               children={(f) => (
                 <>
-                  <input
-                    className={input()}
+                  <Input
                     value={f.state.value}
                     onChange={(e) => f.handleChange(e.target.value)}
                     placeholder="John Doe; Jane Smith"
@@ -418,9 +419,8 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
             <form.Field
               name="description"
               children={(f) => (
-                <textarea
+                <Textarea
                   rows={4}
-                  className={input()}
                   value={f.state.value}
                   onChange={(e) => f.handleChange(e.target.value)}
                 />
@@ -449,9 +449,8 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
                       <Trash2 size={16} />
                     </button>
                   </div>
-                  <textarea
+                  <Textarea
                     rows={4}
-                    className={input()}
                     value={f.state.value}
                     onChange={(e) => f.handleChange(e.target.value)}
                   />
@@ -493,9 +492,9 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
                   <span className="mb-1 block text-xs font-medium text-[var(--sea-ink-soft)]">
                     Publish Date
                   </span>
-                  <input
+                  <Input
+                    aria-label="Publish Date"
                     type="date"
-                    className={input(f.state.meta.errors.length > 0)}
                     value={f.state.value.split('T')[0] || ''}
                     onChange={(e) => f.handleChange(e.target.value)}
                     onBlur={f.handleBlur}
@@ -605,9 +604,9 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
                       <Trash2 size={16} />
                     </button>
                   </div>
-                  <textarea
+                  <Textarea
                     rows={6}
-                    className={`font-mono text-sm ${input()}`}
+                    className="font-mono text-sm"
                     value={f.state.value}
                     onChange={(e) => f.handleChange(e.target.value)}
                   />
@@ -764,9 +763,9 @@ function ChaptersModal({
                 <label className="mb-2 block text-xs font-medium text-[var(--sea-ink-soft)]">
                   YAML Format
                 </label>
-                <textarea
+                <Textarea
                   rows={10}
-                  className={`font-mono text-xs ${input(f.state.meta.errors.length > 0)}`}
+                  className="font-mono text-xs"
                   value={f.state.value}
                   onChange={(e) => {
                     f.handleChange(e.target.value)
@@ -859,15 +858,14 @@ function SubtitleUploads({
               <form.Field
                 name={fieldName}
                 children={(f: any) => (
-                  <label className="flex cursor-pointer items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
+                  <div className="flex items-center gap-2">
+                    <Checkbox
                       checked={f.state.value}
-                      onChange={(e) => f.handleChange(e.target.checked)}
-                      className="h-4 w-4 rounded"
+                      onCheckedChange={f.handleChange}
+                      aria-label={lang}
                     />
-                    {lang}
-                  </label>
+                    <Label className="text-sm">{lang}</Label>
+                  </div>
                 )}
               />
               <button
@@ -922,12 +920,10 @@ function Field({
   children: React.ReactNode
 }) {
   return (
-    <label className="block">
-      <span className="mb-1 block text-xs font-medium text-[var(--sea-ink-soft)]">
-        {label}
-      </span>
+    <div className="space-y-1.5">
+      <label className="text-xs block">{label}</label>
       {children}
-    </label>
+    </div>
   )
 }
 
@@ -940,25 +936,16 @@ function FieldError({ errors }: { errors: any[] }) {
   )
 }
 
-function input(hasError = false) {
-  return [
-    'w-full rounded-md border px-3 py-1.5 text-sm outline-none',
-    'focus:border-blue-500 focus:ring-1 focus:ring-blue-500',
-    hasError ? 'border-red-400' : 'border-gray-300',
-  ].join(' ')
-}
 
 /** LocalizableText input that can toggle between plain string and { en, th } */
 function LocalizableTextInput({
   value,
   onChange,
   label,
-  hasError = false,
 }: {
   value: string | { en: string; th: string }
   onChange: (v: string | { en: string; th: string }) => void
   label: string
-  hasError?: boolean
 }) {
   const isLocalized = typeof value === 'object'
 
@@ -987,8 +974,7 @@ function LocalizableTextInput({
             <label className="mb-1 block text-xs font-medium text-[var(--sea-ink-soft)]">
               English
             </label>
-            <input
-              className={input(hasError)}
+            <Input
               value={value.en}
               onChange={(e) => onChange({ ...value, en: e.target.value })}
             />
@@ -997,16 +983,14 @@ function LocalizableTextInput({
             <label className="mb-1 block text-xs font-medium text-[var(--sea-ink-soft)]">
               Thai
             </label>
-            <input
-              className={input(hasError)}
+            <Input
               value={value.th}
               onChange={(e) => onChange({ ...value, th: e.target.value })}
             />
           </div>
         </div>
       ) : (
-        <input
-          className={input(hasError)}
+        <Input
           value={value}
           onChange={(e) => onChange(e.target.value)}
         />
