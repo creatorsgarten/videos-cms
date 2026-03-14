@@ -59,10 +59,10 @@ function EditPage() {
     <main className="page-wrap px-4 py-12">
       <div className="island-shell rounded-2xl p-6 sm:p-8">
         <button
-        onClick={() => navigate({ to: '/' })}
+        onClick={() => navigate({ to: '/videos', search: { event } })}
         className="mb-6 text-sm text-blue-600 hover:underline"
       >
-        ← Back
+        ← Back to {event}
       </button>
       <h1 className="mb-1 text-2xl font-bold">{video.data.title}</h1>
       <p className="mb-4 font-mono text-xs text-gray-400">
