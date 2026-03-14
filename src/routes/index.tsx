@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useLiveQuery } from '@tanstack/react-db'
 import { useEffect, useRef, useState } from 'react'
-import { FolderOpen, RefreshCw, AlertCircle, ChevronRight } from 'lucide-react'
+import { FolderOpen, RefreshCw, AlertCircle, ChevronRight, Info } from 'lucide-react'
 import { Button } from '#/components/ui/button'
 import { ListItem } from '#/components/ui/list-item'
+import { Alert, AlertDescription } from '#/components/ui/alert'
 import {
   openDirectory,
   loadPersistedDirectory,
@@ -154,11 +155,12 @@ function HomePage() {
 
       {hasVideos && (
         <>
-          <div className="mb-6 rounded-lg bg-blue-50 p-4 border border-blue-200">
-            <p className="text-sm text-blue-900">
+          <Alert className="mb-6">
+            <Info className="h-4 w-4" />
+            <AlertDescription>
               <span className="font-medium">How to use:</span> Choose an event below to manage its videos. You can edit metadata, upload thumbnails, add new videos, and more. Adding new events is not yet supported.
-            </p>
-          </div>
+            </AlertDescription>
+          </Alert>
 
           <div className="mb-3 flex items-center justify-between">
             <p className="text-sm text-gray-500">
