@@ -4,7 +4,7 @@ import { useForm } from '@tanstack/react-form'
 import React, { useRef, useState } from 'react'
 import yaml from 'js-yaml'
 import { z } from 'zod'
-import { CheckCircle, Loader2, AlertCircle, Upload, Trash2 } from 'lucide-react'
+import { CheckCircle, Loader2, AlertCircle, Upload, Trash2, ExternalLink } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -284,13 +284,27 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
               validators={{ onChange: z.string().min(1, 'Required') }}
               children={(f) => (
                 <>
-                  <Input
-                    aria-label="YouTube ID *"
-                    value={f.state.value}
-                    onChange={(e) => f.handleChange(e.target.value)}
-                    onBlur={f.handleBlur}
-                    placeholder="e.g. dQw4w9WgXcQ"
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      aria-label="YouTube ID *"
+                      value={f.state.value}
+                      onChange={(e) => f.handleChange(e.target.value)}
+                      onBlur={f.handleBlur}
+                      placeholder="e.g. dQw4w9WgXcQ"
+                      className="flex-1"
+                    />
+                    {f.state.value && /^[a-zA-Z0-9_-]{11}$/.test(f.state.value) && (
+                      <a
+                        href={`https://www.youtube.com/watch?v=${f.state.value}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center justify-center rounded-md border border-input bg-background px-2.5 py-1 text-sm hover:bg-accent hover:text-accent-foreground"
+                        title="View on YouTube"
+                      >
+                        <ExternalLink size={16} />
+                      </a>
+                    )}
+                  </div>
                   <FieldError errors={f.state.meta.errors} />
                 </>
               )}
