@@ -219,3 +219,19 @@ export function getKnownEvents(): string[] {
   }
   return Array.from(events).sort()
 }
+
+// ---------------------------------------------------------------------------
+// Thumbnail Check
+// ---------------------------------------------------------------------------
+
+export async function checkThumbnailExists(id: string): Promise<boolean> {
+  const cached = videoCache.get(id)
+  const dirHandle = eventDirHandles.get(id)
+  if (!cached || !dirHandle) return false
+  try {
+    await dirHandle.getFileHandle(`${cached.slug}.jpg`)
+    return true
+  } catch {
+    return false
+  }
+}

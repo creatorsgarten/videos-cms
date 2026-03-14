@@ -18,11 +18,13 @@ import { Textarea } from '#/components/ui/textarea'
 import { Checkbox } from '#/components/ui/checkbox'
 import { Label } from '#/components/ui/label'
 import { DatePicker } from '#/components/ui/date-picker'
+import { ReadinessChecklist } from '#/components/readiness-checklist'
 import {
   videosCollection,
   getVideoById,
   saveVideo,
   saveSubtitle,
+  checkThumbnailExists,
   type VideoRecord,
 } from '../../packlets/video-store'
 import type { VideoFrontMatter } from '../../packlets/video-parser'
@@ -80,6 +82,55 @@ function EditPage() {
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 
+// Helper to check if all checklist items are green
+function areAllChecklistItemsGreen(
+  title: string,
+  youtube: string,
+  description: string,
+  chaptersYaml: string,
+  subtitleEn: boolean,
+  subtitleTh: boolean,
+  language: 'en' | 'th',
+  thumbnailExists: boolean,
+  thumbnailCheckDone: boolean,
+): boolean {
+  // If thumbnail check isn't done yet, we can't say all items are green
+  if (!thumbnailCheckDone) return false
+
+  // Check title
+  if (!title.trim()) return false
+
+  // Check YouTube ID
+  const youtubeIdRegex = /^[a-zA-Z0-9_-]{11}$/
+  if (!youtube || !youtubeIdRegex.test(youtube)) return false
+
+  // Check description
+  if (!description.trim()) return false
+
+  // Check chapters
+  let chapters: Record<string, unknown> = {}
+  if (chaptersYaml.trim()) {
+    try {
+      const parsed = yaml.load(chaptersYaml)
+      chapters = typeof parsed === 'object' && !Array.isArray(parsed)
+        ? (parsed as Record<string, unknown>)
+        : {}
+    } catch {
+      return false
+    }
+  }
+  if (Object.keys(chapters).length === 0) return false
+
+  // Check subtitles based on language
+  const hasRequiredSubtitles = language === 'en' ? subtitleEn : subtitleTh
+  if (!hasRequiredSubtitles) return false
+
+  // Check thumbnail
+  if (!thumbnailExists) return false
+
+  return true
+}
+
 function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
   const [saveError, setSaveError] = useState('')
@@ -92,6 +143,8 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
   const [showTeam, setShowTeam] = useState(!!video.data.team)
   const [showBody, setShowBody] = useState(!!video.content.trim())
   const [showChaptersModal, setShowChaptersModal] = useState(false)
+  const [thumbnailExists, setThumbnailExists] = useState(false)
+  const [isCheckingThumbnail, setIsCheckingThumbnail] = useState(true)
 
   const youtubeTitle = video.data.youtubeTitle ?? ''
 
@@ -178,6 +231,17 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
       }
     },
   })
+
+  // Check if thumbnail exists (for publish date messaging)
+  React.useEffect(() => {
+    const checkThumbnail = async () => {
+      setIsCheckingThumbnail(true)
+      const exists = await checkThumbnailExists(id)
+      setThumbnailExists(exists)
+      setIsCheckingThumbnail(false)
+    }
+    checkThumbnail()
+  }, [id])
 
   const currentType = form.getFieldValue('type')
 
@@ -470,55 +534,7 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
           )}
         </fieldset>
 
-        {/* ── 5. Publish Date fieldset ── */}
-        <fieldset className="space-y-4 rounded-lg border p-4">
-          <legend className="px-1 text-xs font-semibold uppercase tracking-wider text-gray-400">
-            Publish Date
-          </legend>
-
-          <form.Field
-            name="publishedDate"
-            validators={{
-              onChange: z
-                .string()
-                .refine(
-                  (v) => v === '' || /^\d{4}-\d{2}-\d{2}(T[\d:.]+Z)?$/.test(v),
-                  'Enter a date: YYYY-MM-DD',
-                ),
-            }}
-            children={(f) => (
-              <div className="space-y-2">
-                <label className="block text-xs font-medium text-[var(--sea-ink-soft)]">
-                  Publish Date
-                </label>
-                <div className="flex gap-2">
-                  <DatePicker
-                    value={f.state.value.split('T')[0] || ''}
-                    onChange={(date) => f.handleChange(date)}
-                    placeholder="Pick a date..."
-                  />
-                  {f.state.value && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => f.handleChange('')}
-                      title="Clear publish date"
-                    >
-                      <Trash2 size={16} />
-                    </Button>
-                  )}
-                </div>
-                <p className="mt-1 text-xs text-[var(--sea-ink-soft)]">
-                  Leave empty for draft. Today publishes immediately, future dates schedule on YouTube.
-                </p>
-                <FieldError errors={f.state.meta.errors} />
-              </div>
-            )}
-          />
-        </fieldset>
-
-        {/* ── 6. Chapters section ── */}
+        {/* ── 5. Chapters section ── */}
         <fieldset className="space-y-4 rounded-lg border p-4">
           <legend className="px-1 text-xs font-semibold uppercase tracking-wider text-gray-400">
             Chapters
@@ -581,7 +597,7 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
           />
         </fieldset>
 
-        {/* ── 7. Subtitles section ── */}
+        {/* ── 6. Subtitles section ── */}
         <fieldset className="space-y-4 rounded-lg border p-4">
           <legend className="px-1 text-xs font-semibold uppercase tracking-wider text-gray-400">
             Subtitles
@@ -589,7 +605,7 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
           <SubtitleUploads id={id} form={form} />
         </fieldset>
 
-        {/* ── 8. Body/Markdown section (Optional) ── */}
+        {/* ── 7. Body/Markdown section (Optional) ── */}
         {showBody && (
           <fieldset className="space-y-4 rounded-lg border p-4">
             <legend className="px-1 text-xs font-semibold uppercase tracking-wider text-gray-400">
@@ -638,6 +654,119 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
             </button>
           </div>
         )}
+
+        {/* ── 8. Readiness Checklist ── */}
+        <form.Subscribe
+          selector={(s) => ({
+            title: s.values.title,
+            youtube: s.values.youtube,
+            description: s.values.description,
+            chaptersYaml: s.values.chaptersYaml,
+            language: s.values.language,
+            subtitleEn: s.values.subtitleEn,
+            subtitleTh: s.values.subtitleTh,
+          })}
+          children={(vals) => (
+            <ReadinessChecklist
+              videoId={id}
+              {...vals}
+            />
+          )}
+        />
+
+        {/* ── 9. Publish Date fieldset ── */}
+        <fieldset className="space-y-4 rounded-lg border p-4">
+          <legend className="px-1 text-xs font-semibold uppercase tracking-wider text-gray-400">
+            Publish Date
+          </legend>
+
+          <form.Subscribe
+            selector={(s) => ({
+              title: s.values.title,
+              youtube: s.values.youtube,
+              description: s.values.description,
+              chaptersYaml: s.values.chaptersYaml,
+              language: s.values.language,
+              subtitleEn: s.values.subtitleEn,
+              subtitleTh: s.values.subtitleTh,
+              publishedDate: s.values.publishedDate,
+            })}
+            children={(vals) => {
+              const allChecklistGreen = areAllChecklistItemsGreen(
+                vals.title,
+                vals.youtube,
+                vals.description,
+                vals.chaptersYaml,
+                vals.subtitleEn,
+                vals.subtitleTh,
+                vals.language,
+                thumbnailExists,
+                !isCheckingThumbnail,
+              )
+
+              return (
+                <form.Field
+                  name="publishedDate"
+                  validators={{
+                    onChange: z
+                      .string()
+                      .refine(
+                        (v) => v === '' || /^\d{4}-\d{2}-\d{2}(T[\d:.]+Z)?$/.test(v),
+                        'Enter a date: YYYY-MM-DD',
+                      ),
+                  }}
+                  children={(f) => (
+                    <div className="space-y-2">
+                      <label className="block text-xs font-medium text-[var(--sea-ink-soft)]">
+                        Publish Date
+                      </label>
+                      <div className="flex gap-2">
+                        <DatePicker
+                          value={f.state.value.split('T')[0] || ''}
+                          onChange={(date) => f.handleChange(date)}
+                          placeholder="Pick a date..."
+                        />
+                        {f.state.value && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => f.handleChange('')}
+                            title="Clear publish date"
+                          >
+                            <Trash2 size={16} />
+                          </Button>
+                        )}
+                      </div>
+                      <p className="mt-1 text-xs text-[var(--sea-ink-soft)]">
+                        Leave empty for draft. Today publishes immediately, future dates schedule on YouTube.
+                      </p>
+
+                      {/* Publish date readiness messaging */}
+                      {allChecklistGreen && !f.state.value && (
+                        <p className="mt-2 text-xs text-gray-600">
+                          ✓ Ready to publish. Pick a date this video should be published.
+                        </p>
+                      )}
+                      {allChecklistGreen && f.state.value && (
+                        <p className="mt-2 flex items-center gap-1 text-xs text-green-600">
+                          <CheckCircle size={14} /> Publish date has been set
+                        </p>
+                      )}
+                      {!allChecklistGreen && f.state.value && (
+                        <p className="mt-2 flex items-center gap-1 text-xs text-yellow-600">
+                          <AlertCircle size={14} /> Video metadata is not ready for publishing yet, please unset publish date
+                        </p>
+                      )}
+
+                      <FieldError errors={f.state.meta.errors} />
+                    </div>
+                  )}
+                />
+              )
+            }}
+          />
+        </fieldset>
 
         {/* ── Submit ── */}
         <div className="flex items-center gap-3">
