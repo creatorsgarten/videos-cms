@@ -5,7 +5,8 @@ import { ChevronLeft } from 'lucide-react'
 import { Input } from '#/components/ui/input'
 import { ListItem } from '#/components/ui/list-item'
 import { Badge } from '#/components/ui/badge'
-import { videosCollection } from '../../packlets/video-store'
+import { VideoThumbnail } from '#/components/video-thumbnail'
+import { videosCollection, getEventDirHandle } from '../../packlets/video-store'
 
 export const Route = createFileRoute('/videos/')({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -101,7 +102,13 @@ function VideoListPage() {
                       to="/videos/$event/$slug"
                       params={{ event: v.event, slug: v.slug }}
                     >
-                      <ListItem className="gap-3 justify-between">
+                      <ListItem className="gap-3">
+                        <VideoThumbnail
+                          event={v.event}
+                          slug={v.slug}
+                          getEventDirHandle={getEventDirHandle}
+                          alt={v.title}
+                        />
                         <div className="min-w-0 flex-1">
                           <p className="truncate font-medium">{v.title}</p>
                           <div className="flex flex-wrap gap-2 text-xs text-gray-400">

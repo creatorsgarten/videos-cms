@@ -114,6 +114,11 @@ export function getVideoById(id: string): VideoRecord | undefined {
   return videoCache.get(id)
 }
 
+/** Get the directory handle for a video's event (used for loading assets like thumbnails) */
+export function getEventDirHandle(id: string): FileSystemDirectoryHandle | undefined {
+  return eventDirHandles.get(id)
+}
+
 export async function saveVideo(
   id: string,
   data: VideoFrontMatter,
