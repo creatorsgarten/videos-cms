@@ -55,7 +55,10 @@ export function AddVideoModal({
     e.preventDefault()
     setError(null)
 
-    const titleToUse = title.trim() || slug
+    if (!title.trim()) {
+      setError('Please enter a title')
+      return
+    }
 
     if (!slug.trim()) {
       setError('Please enter a slug')
@@ -83,7 +86,7 @@ export function AddVideoModal({
     setIsLoading(true)
 
     try {
-      await createVideo(event, slug, youtubeId, titleToUse)
+      await createVideo(event, slug, youtubeId, title.trim())
       onCreated(event, slug)
       onClose()
     } catch (err) {
@@ -102,7 +105,7 @@ export function AddVideoModal({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Title (Optional)
+              Title *
             </label>
             <Input
               type="text"
@@ -111,9 +114,6 @@ export function AddVideoModal({
               onChange={(e) => setTitle(e.target.value)}
               disabled={isLoading}
             />
-            <p className="mt-1 text-xs text-gray-500">
-              If left empty, the slug will be used as title
-            </p>
           </div>
 
           <div>
