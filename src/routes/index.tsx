@@ -154,6 +154,12 @@ function HomePage() {
 
       {hasVideos && (
         <>
+          <div className="mb-6 rounded-lg bg-blue-50 p-4 border border-blue-200">
+            <p className="text-sm text-blue-900">
+              <span className="font-medium">How to use:</span> Choose an event below to manage its videos. You can edit metadata, upload thumbnails, add new videos, and more. Adding new events is not yet supported.
+            </p>
+          </div>
+
           <div className="mb-3 flex items-center justify-between">
             <p className="text-sm text-gray-500">
               {videos!.length} videos across{' '}
