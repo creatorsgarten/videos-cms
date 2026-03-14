@@ -182,6 +182,7 @@ export async function createVideo(
   event: string,
   slug: string,
   youtubeId: string,
+  title?: string,
 ): Promise<void> {
   if (!rootHandle) throw new Error('Root handle not set. Call scanVideos first.')
 
@@ -190,7 +191,7 @@ export async function createVideo(
   const eventHandle = await videosHandle.getDirectoryHandle(event)
 
   const data: VideoFrontMatter = {
-    title: slug,
+    title: title || slug,
     speaker: 'FIXME',
     youtube: youtubeId,
     managed: true,

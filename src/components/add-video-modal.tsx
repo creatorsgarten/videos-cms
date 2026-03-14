@@ -17,6 +17,7 @@ export function AddVideoModal({
   onClose,
   onCreated,
 }: AddVideoModalProps) {
+  const [title, setTitle] = useState('')
   const [slug, setSlug] = useState('')
   const [youtubeInput, setYoutubeInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -24,6 +25,7 @@ export function AddVideoModal({
 
   useEffect(() => {
     if (isOpen) {
+      setTitle('')
       setSlug('')
       setYoutubeInput('')
       setError(null)
@@ -53,6 +55,8 @@ export function AddVideoModal({
     e.preventDefault()
     setError(null)
 
+    const titleToUse = title.trim() || slug
+
     if (!slug.trim()) {
       setError('Please enter a slug')
       return
@@ -79,7 +83,7 @@ export function AddVideoModal({
     setIsLoading(true)
 
     try {
-      await createVideo(event, slug, youtubeId)
+      await createVideo(event, slug, youtubeId, titleToUse)
       onCreated(event, slug)
       onClose()
     } catch (err) {
@@ -96,6 +100,22 @@ export function AddVideoModal({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Title (Optional)
+            </label>
+            <Input
+              type="text"
+              placeholder="e.g. My Awesome Talk"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              disabled={isLoading}
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              If left empty, the slug will be used as title
+            </p>
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Slug
