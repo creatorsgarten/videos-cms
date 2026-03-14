@@ -23,6 +23,9 @@ export const videosCollection = createCollection(
 // Track current IDs so we can clear on rescan (TanStack DB has no getAll API)
 let currentIds = new Set<string>()
 
+// Store rootHandle at module level (set during scanVideos)
+let rootHandle: FileSystemDirectoryHandle | null = null
+
 // Module-level cache for synchronous reads (useLiveQuery can be async on first render)
 const videoCache = new Map<string, VideoRecord>()
 
@@ -34,14 +37,15 @@ const videoCache = new Map<string, VideoRecord>()
  *  Non-destructive: upserts records as they are found, then removes any that
  *  disappeared from disk.  onProgress is called with the running file count. */
 export async function scanVideos(
-  rootHandle: FileSystemDirectoryHandle,
+  newRootHandle: FileSystemDirectoryHandle,
   onProgress?: (count: number) => void,
 ): Promise<void> {
+  rootHandle = newRootHandle
   const newIds = new Set<string>()
   const newFileHandles = new Map<string, FileSystemFileHandle>()
   const newEventDirHandles = new Map<string, FileSystemDirectoryHandle>()
 
-  const dataHandle = await rootHandle.getDirectoryHandle('data')
+  const dataHandle = await newRootHandle.getDirectoryHandle('data')
   const videosHandle = await dataHandle.getDirectoryHandle('videos')
   let count = 0
 
@@ -152,4 +156,66 @@ export async function saveSubtitle(
   const fh = await dirHandle.getFileHandle(filename, { create: true })
   const text = await file.text()
   await writeFile(fh, text)
+}
+
+// ---------------------------------------------------------------------------
+// Thumbnail
+// ---------------------------------------------------------------------------
+
+export async function saveThumbnail(id: string, blob: Blob): Promise<void> {
+  const cached = videoCache.get(id)
+  const dirHandle = eventDirHandles.get(id)
+  if (!cached || !dirHandle) throw new Error(`Video not found: ${id}`)
+
+  const filename = `${cached.slug}.jpg`
+  const fh = await dirHandle.getFileHandle(filename, { create: true })
+  const writable = await fh.createWritable()
+  await writable.write(blob)
+  await writable.close()
+}
+
+// ---------------------------------------------------------------------------
+// Create Video
+// ---------------------------------------------------------------------------
+
+export async function createVideo(
+  event: string,
+  slug: string,
+  youtubeId: string,
+): Promise<void> {
+  if (!rootHandle) throw new Error('Root handle not set. Call scanVideos first.')
+
+  const dataHandle = await rootHandle.getDirectoryHandle('data')
+  const videosHandle = await dataHandle.getDirectoryHandle('videos')
+  const eventHandle = await videosHandle.getDirectoryHandle(event)
+
+  const data: VideoFrontMatter = {
+    title: slug,
+    speaker: 'FIXME',
+    youtube: youtubeId,
+    managed: true,
+    published: false,
+    type: 'talk',
+    language: 'th',
+  }
+
+  const text = serializeVideoFile(data, '')
+  const fh = await eventHandle.getFileHandle(`${slug}.md`, { create: true })
+  await writeFile(fh, text)
+
+  // Refresh the collection to include the new video
+  await scanVideos(rootHandle)
+}
+
+// ---------------------------------------------------------------------------
+// Known Events
+// ---------------------------------------------------------------------------
+
+export function getKnownEvents(): string[] {
+  const events = new Set<string>()
+  for (const id of currentIds) {
+    const [event] = id.split('/')
+    events.add(event)
+  }
+  return Array.from(events).sort()
 }

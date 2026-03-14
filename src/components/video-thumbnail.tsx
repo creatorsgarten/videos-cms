@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
+import { Camera } from 'lucide-react'
 
 interface VideoThumbnailProps {
   event: string
   slug: string
   getEventDirHandle: (id: string) => FileSystemDirectoryHandle | undefined
   alt: string
+  onUpdateClick?: () => void
 }
 
 export function VideoThumbnail({
@@ -12,6 +14,7 @@ export function VideoThumbnail({
   slug,
   getEventDirHandle,
   alt,
+  onUpdateClick,
 }: VideoThumbnailProps) {
   const [imageSrc, setImageSrc] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -61,6 +64,42 @@ export function VideoThumbnail({
     } finally {
       setIsLoading(false)
     }
+  }
+
+  if (onUpdateClick) {
+    return (
+      <button
+        onClick={(e) => {
+          e.preventDefault()
+          onUpdateClick()
+        }}
+        className="group relative bg-gray-100 rounded overflow-hidden shrink-0 hover:opacity-90"
+        style={{ width: '128px', height: '72px' }}
+      >
+        <div
+          ref={containerRef}
+          className="w-full h-full"
+        >
+          {imageSrc ? (
+            <img
+              src={imageSrc}
+              alt={alt}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-400 text-[10px]">
+              {isLoading ? '...' : '—'}
+            </div>
+          )}
+        </div>
+        <div className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex flex-col items-center gap-1">
+            <Camera size={16} className="text-white" />
+            <span className="text-white text-[10px] font-medium">Update</span>
+          </div>
+        </div>
+      </button>
+    )
   }
 
   return (
