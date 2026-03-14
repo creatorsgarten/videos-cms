@@ -106,7 +106,6 @@ export function AddVideoModal({
               value={slug}
               onChange={(e) => setSlug(e.target.value.toLowerCase())}
               disabled={isLoading}
-              pattern="[a-z0-9-]+"
             />
             <p className="mt-1 text-xs text-gray-500">
               Lowercase letters, numbers, and hyphens only
