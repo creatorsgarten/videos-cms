@@ -80,6 +80,6 @@ test.describe('video edit form', () => {
 
     const writes = await page.evaluate(() => (window as any).__writes ?? {})
     const written = Object.values(writes)[0] as string
-    expect(written).not.toContain('published:')
+    expect(written).toContain('published: false')
   })
 })

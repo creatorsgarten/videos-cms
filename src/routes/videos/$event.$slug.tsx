@@ -184,7 +184,7 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
 
         const published: VideoFrontMatter['published'] = value.publishedDate
           ? value.publishedDate
-          : undefined
+          : false
 
         const subtitles = [
           value.subtitleEn && 'en',
@@ -198,6 +198,7 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
           managed: value.managed,
           type: value.type,
           language: value.language,
+          published,
         }
 
         // Add optional fields if present
@@ -208,7 +209,6 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
         if (value.description) newData.description = value.description
         if (showEnglishDescription && value.englishDescription)
           newData.englishDescription = value.englishDescription
-        if (published) newData.published = published
         if (subtitles.length) newData.subtitles = subtitles
         if (chapters) newData.chapters = chapters
         if (showTeam && value.team) newData.team = { name: value.team }
@@ -217,10 +217,6 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
         const data: VideoFrontMatter = { ...video.data }
         // Override with new values
         Object.assign(data, newData)
-        // Explicitly remove published if not set
-        if (!published) {
-          delete data.published
-        }
 
         await saveVideo(id, data, value.content)
         setSaveStatus('saved')
