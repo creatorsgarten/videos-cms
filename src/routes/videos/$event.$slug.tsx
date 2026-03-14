@@ -92,7 +92,6 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
   const [showTeam, setShowTeam] = useState(!!video.data.team)
   const [showBody, setShowBody] = useState(!!video.content.trim())
   const [showChaptersModal, setShowChaptersModal] = useState(false)
-  const [chaptersError, setChaptersError] = useState('')
 
   const youtubeTitle = video.data.youtubeTitle ?? ''
 
@@ -569,7 +568,9 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
 
                   <button
                     type="button"
-                    onClick={() => setShowChaptersModal(true)}
+                    onClick={() => {
+                      setShowChaptersModal(true)
+                    }}
                     className="text-xs text-blue-600 hover:underline"
                   >
                     {Object.keys(parsedChapters).length > 0 ? '[Edit Chapters]' : '[+ Add Chapters]'}
@@ -669,17 +670,38 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
       {/* ── Chapters Modal ── */}
       {showChaptersModal && (
         <ChaptersModal
-          form={form}
-          onClose={() => {
-            setShowChaptersModal(false)
-            setChaptersError('')
+          initialValue={form.getFieldValue('chaptersYaml')}
+          onClose={() => setShowChaptersModal(false)}
+          onSave={async (yamlText) => {
+            if (!yamlText.trim()) {
+              form.setFieldValue('chaptersYaml', '')
+              setShowChaptersModal(false)
+              return { ok: true }
+            }
+
+            try {
+              const parsed = yaml.load(yamlText)
+              if (
+                typeof parsed !== 'object' ||
+                parsed === null ||
+                Array.isArray(parsed)
+              ) {
+                return {
+                  ok: false,
+                  reason: 'Invalid YAML — must be a mapping of timecode: title',
+                }
+              }
+
+              form.setFieldValue('chaptersYaml', yamlText)
+              setShowChaptersModal(false)
+              return { ok: true }
+            } catch (e) {
+              return {
+                ok: false,
+                reason: `YAML parsing error: ${String(e)}`,
+              }
+            }
           }}
-          onSave={() => {
-            setShowChaptersModal(false)
-            setChaptersError('')
-          }}
-          error={chaptersError}
-          setError={setChaptersError}
         />
       )}
     </>
@@ -731,18 +753,54 @@ function TypeSelect({ form }: { form: any }) {
 // ---------------------------------------------------------------------------
 
 function ChaptersModal({
-  form,
+  initialValue,
   onClose,
   onSave,
-  error,
-  setError,
 }: {
-  form: any
+  initialValue: string
   onClose: () => void
-  onSave: () => void
-  error: string
-  setError: (err: string) => void
+  onSave: (yaml: string) => Promise<{ ok: true } | { ok: false; reason: string }>
 }) {
+  const [chaptersYaml, setChaptersYaml] = useState(initialValue)
+  const [error, setError] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
+
+  const validationError = (() => {
+    if (!chaptersYaml.trim()) return null
+    try {
+      const parsed = yaml.load(chaptersYaml)
+      if (
+        typeof parsed !== 'object' ||
+        parsed === null ||
+        Array.isArray(parsed)
+      ) {
+        return 'Invalid YAML — must be a mapping of timecode: title'
+      }
+      return null
+    } catch {
+      return 'Invalid YAML syntax'
+    }
+  })()
+
+  const handleSave = async () => {
+    if (validationError) {
+      setError(validationError)
+      return
+    }
+
+    setIsSaving(true)
+    try {
+      const result = await onSave(chaptersYaml)
+      if (result.ok) {
+        onClose()
+      } else {
+        setError(result.reason)
+      }
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   return (
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent>
@@ -750,76 +808,47 @@ function ChaptersModal({
           <DialogTitle>Edit Chapters</DialogTitle>
         </DialogHeader>
 
-        <form.Field
-          name="chaptersYaml"
-          validators={{
-            onChange: z.string().refine((v) => {
-              if (!v.trim()) return true
-              try {
-                const parsed = yaml.load(v)
-                return (
-                  typeof parsed === 'object' &&
-                  parsed !== null &&
-                  !Array.isArray(parsed)
-                )
-              } catch {
-                return false
-              }
-            }, 'Invalid YAML — must be a mapping of timecode: title'),
-          }}
-          children={(f: any) => (
-            <div className="space-y-3">
-              <div>
-                <label className="mb-2 block text-xs font-medium text-[var(--sea-ink-soft)]">
-                  YAML Format
-                </label>
-                <Textarea
-                  rows={10}
-                  className="font-mono text-xs"
-                  value={f.state.value}
-                  onChange={(e) => {
-                    f.handleChange(e.target.value)
-                    setError('')
-                  }}
-                  onBlur={f.handleBlur}
-                  placeholder={'\'0:00\': Introduction\n\'5:30\': Main content\n\'10:45\': Discussion'}
-                />
-                <p className="mt-1 text-xs text-[var(--sea-ink-soft)]">
-                  Format: &apos;timestamp&apos;: Chapter Name (localized: name with {`{en: ..., th: ...}`})
-                </p>
-              </div>
+        <div className="space-y-3">
+          <div>
+            <label className="mb-2 block text-xs font-medium text-[var(--sea-ink-soft)]">
+              YAML Format
+            </label>
+            <Textarea
+              rows={10}
+              className="font-mono text-xs"
+              value={chaptersYaml}
+              onChange={(e) => {
+                setChaptersYaml(e.target.value)
+                setError('')
+              }}
+              placeholder={'\'0:00\': Introduction\n\'5:30\': Main content\n\'10:45\': Discussion'}
+            />
+            <p className="mt-1 text-xs text-[var(--sea-ink-soft)]">
+              Format: &apos;timestamp&apos;: Chapter Name (localized: name with {`{en: ..., th: ...}`})
+            </p>
+          </div>
 
-              {error && (
-                <p className="text-xs text-red-500">{error}</p>
-              )}
-
-              {f.state.meta.errors.length > 0 && (
-                <FieldError errors={f.state.meta.errors} />
-              )}
-            </div>
+          {validationError && (
+            <p className="text-xs text-red-500">{validationError}</p>
           )}
-        />
+
+          {error && <p className="text-xs text-red-500">{error}</p>}
+        </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={onClose} disabled={isSaving}>
             Cancel
           </Button>
-          <form.Field
-            name="chaptersYaml"
-            children={(f: any) => (
-              <Button
-                onClick={() => {
-                  if (f.state.meta.errors.length > 0) {
-                    setError('Fix validation errors before saving')
-                    return
-                  }
-                  onSave()
-                }}
-              >
-                Save
-              </Button>
+          <Button onClick={handleSave} disabled={isSaving || !!validationError}>
+            {isSaving ? (
+              <>
+                <Loader2 size={14} className="mr-2 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              'Save'
             )}
-          />
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
