@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useLiveQuery } from '@tanstack/react-db'
 import { useState } from 'react'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, FileText, Subtitles, BookOpen } from 'lucide-react'
 import { Input } from '#/components/ui/input'
 import { ListItem } from '#/components/ui/list-item'
 import { Badge } from '#/components/ui/badge'
@@ -27,6 +27,9 @@ function VideoListPage() {
       title: v.data.title,
       speaker: v.data.speaker,
       published: v.data.published,
+      description: v.data.description,
+      subtitles: v.data.subtitles,
+      chapters: v.data.chapters,
     })),
   )
 
@@ -114,6 +117,20 @@ function VideoListPage() {
                           <div className="flex flex-wrap gap-2 text-xs text-gray-400">
                             {v.speaker && <p className="truncate">{v.speaker}</p>}
                             <p className="truncate font-mono text-gray-500">{v.slug}</p>
+                          </div>
+                          <div className="mt-1 flex gap-1">
+                            <FileText
+                              size={14}
+                              className={v.description ? 'text-green-600' : 'text-gray-500 opacity-50'}
+                            />
+                            <Subtitles
+                              size={14}
+                              className={v.subtitles && v.subtitles.length > 0 ? 'text-green-600' : 'text-gray-500 opacity-50'}
+                            />
+                            <BookOpen
+                              size={14}
+                              className={v.chapters && Object.keys(v.chapters).length > 0 ? 'text-green-600' : 'text-gray-500 opacity-50'}
+                            />
                           </div>
                         </div>
                         <PublishedBadge published={v.published} />
