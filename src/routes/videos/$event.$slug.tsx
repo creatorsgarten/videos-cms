@@ -1027,7 +1027,7 @@ function ChaptersModal({
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent>
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Edit Chapters</DialogTitle>
         </DialogHeader>
