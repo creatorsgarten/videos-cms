@@ -13,6 +13,8 @@ import {
   ExternalLink,
   Copy,
   Pencil,
+  Plus,
+  Sparkles,
 } from "lucide-react";
 import {
   Dialog,
@@ -409,15 +411,15 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
         )}
 
         {!showYoutubeTitle && (
-          <div className="rounded-lg border border-dashed p-4">
-            <button
-              type="button"
-              onClick={() => setShowYoutubeTitle(true)}
-              className="text-xs text-blue-600 hover:underline"
-            >
-              [+ Customize YouTube Title]
-            </button>
-          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setShowYoutubeTitle(true)}
+          >
+            <Plus size={14} className="mr-1" />
+            Customize YouTube Title
+          </Button>
         )}
 
         {/* ── 3. Pitch Info fieldset (Conditional) ── */}
@@ -477,13 +479,15 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
             )}
 
             {!showTeam && (
-              <button
+              <Button
                 type="button"
+                variant="outline"
+                size="sm"
                 onClick={() => setShowTeam(true)}
-                className="text-xs text-blue-600 hover:underline"
               >
-                [+ Add Team]
-              </button>
+                <Plus size={14} className="mr-1" />
+                Add Team
+              </Button>
             )}
           </fieldset>
         )}
@@ -557,13 +561,15 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
           )}
 
           {!showEnglishDescription && (
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={() => setShowEnglishDescription(true)}
-              className="text-xs text-blue-600 hover:underline"
             >
-              [+ Add English Description]
-            </button>
+              <Plus size={14} className="mr-1" />
+              Add English Description
+            </Button>
           )}
         </fieldset>
 
@@ -625,27 +631,40 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
                     </div>
                   )}
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowChaptersModal(true);
-                    }}
-                    className="text-xs text-blue-600 hover:underline"
-                  >
-                    {Object.keys(parsedChapters).length > 0
-                      ? "[Edit Chapters]"
-                      : "[+ Add Chapters]"}
-                  </button>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setShowChaptersModal(true);
+                      }}
+                    >
+                      {Object.keys(parsedChapters).length > 0 ? (
+                        <>
+                          <Pencil size={14} className="mr-1" />
+                          Edit Chapters
+                        </>
+                      ) : (
+                        <>
+                          <Plus size={14} className="mr-1" />
+                          Add Chapters
+                        </>
+                      )}
+                    </Button>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowGeneratePromptModal(true);
-                    }}
-                    className="text-xs text-blue-600 hover:underline ml-2"
-                  >
-                    [Generate Prompt]
-                  </button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setShowGeneratePromptModal(true);
+                      }}
+                    >
+                      <Sparkles size={14} className="mr-1" />
+                      Generate Prompt
+                    </Button>
+                  </div>
                 </div>
               );
             }}
@@ -699,15 +718,15 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
         )}
 
         {!showBody && (
-          <div className="rounded-lg border border-dashed p-4">
-            <button
-              type="button"
-              onClick={() => setShowBody(true)}
-              className="text-xs text-blue-600 hover:underline"
-            >
-              [+ Add Body]
-            </button>
-          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setShowBody(true)}
+          >
+            <Plus size={14} className="mr-1" />
+            Add Body
+          </Button>
         )}
 
         {/* ── 8. Readiness Checklist ── */}
