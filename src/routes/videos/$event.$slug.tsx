@@ -1020,11 +1020,20 @@ function ChaptersModal({
             </label>
             <Textarea
               rows={10}
-              className="font-mono text-xs"
+              className="font-mono text-xs max-h-80"
               value={chaptersYaml}
               onChange={(e) => {
                 setChaptersYaml(e.target.value);
                 setError("");
+              }}
+              onPaste={(e) => {
+                const text = e.clipboardData.getData("text");
+                const match = text.match(/<chapters>([\s\S]*?)<\/chapters>/);
+                if (match) {
+                  e.preventDefault();
+                  setChaptersYaml(match[1].trim());
+                  setError("");
+                }
               }}
               placeholder={
                 "'0:00': Introduction\n'5:30': Main content\n'10:45': Discussion"
