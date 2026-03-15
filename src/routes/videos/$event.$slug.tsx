@@ -655,7 +655,7 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
 
                     <Button
                       type="button"
-                      variant="outline"
+                      variant="ghost"
                       size="sm"
                       onClick={() => {
                         setShowGeneratePromptModal(true);
