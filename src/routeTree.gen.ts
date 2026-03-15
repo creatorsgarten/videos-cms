@@ -9,10 +9,16 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as VideosIndexRouteImport } from './routes/videos/index'
 import { Route as VideosEventSlugRouteImport } from './routes/videos/$event.$slug'
 
+const CalendarRoute = CalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -31,36 +37,47 @@ const VideosEventSlugRoute = VideosEventSlugRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/calendar': typeof CalendarRoute
   '/videos/': typeof VideosIndexRoute
   '/videos/$event/$slug': typeof VideosEventSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/calendar': typeof CalendarRoute
   '/videos': typeof VideosIndexRoute
   '/videos/$event/$slug': typeof VideosEventSlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/calendar': typeof CalendarRoute
   '/videos/': typeof VideosIndexRoute
   '/videos/$event/$slug': typeof VideosEventSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/videos/' | '/videos/$event/$slug'
+  fullPaths: '/' | '/calendar' | '/videos/' | '/videos/$event/$slug'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/videos' | '/videos/$event/$slug'
-  id: '__root__' | '/' | '/videos/' | '/videos/$event/$slug'
+  to: '/' | '/calendar' | '/videos' | '/videos/$event/$slug'
+  id: '__root__' | '/' | '/calendar' | '/videos/' | '/videos/$event/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CalendarRoute: typeof CalendarRoute
   VideosIndexRoute: typeof VideosIndexRoute
   VideosEventSlugRoute: typeof VideosEventSlugRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/calendar': {
+      id: '/calendar'
+      path: '/calendar'
+      fullPath: '/calendar'
+      preLoaderRoute: typeof CalendarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -87,6 +104,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CalendarRoute: CalendarRoute,
   VideosIndexRoute: VideosIndexRoute,
   VideosEventSlugRoute: VideosEventSlugRoute,
 }
