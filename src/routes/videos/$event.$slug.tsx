@@ -1,86 +1,102 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useLiveQuery } from '@tanstack/react-db'
-import { useForm } from '@tanstack/react-form'
-import React, { useRef, useState } from 'react'
-import yaml from 'js-yaml'
-import { z } from 'zod'
-import { CheckCircle, Loader2, AlertCircle, Upload, Trash2, ExternalLink } from 'lucide-react'
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useLiveQuery } from "@tanstack/react-db";
+import { useForm } from "@tanstack/react-form";
+import React, { useRef, useState } from "react";
+import yaml from "js-yaml";
+import { z } from "zod";
+import {
+  CheckCircle,
+  Loader2,
+  AlertCircle,
+  Upload,
+  Trash2,
+  ExternalLink,
+  Copy,
+  Pencil,
+  Plus,
+  Sparkles,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from '#/components/ui/dialog'
-import { Button } from '#/components/ui/button'
-import { Input } from '#/components/ui/input'
-import { Textarea } from '#/components/ui/textarea'
-import { Checkbox } from '#/components/ui/checkbox'
-import { Label } from '#/components/ui/label'
-import { DatePicker } from '#/components/ui/date-picker'
-import { ReadinessChecklist } from '#/components/readiness-checklist'
+} from "#/components/ui/dialog";
+import { Button } from "#/components/ui/button";
+import { Input } from "#/components/ui/input";
+import { Textarea } from "#/components/ui/textarea";
+import { Checkbox } from "#/components/ui/checkbox";
+import { Label } from "#/components/ui/label";
+import { DatePicker } from "#/components/ui/date-picker";
+import { ReadinessChecklist } from "#/components/readiness-checklist";
 import {
   videosCollection,
   getVideoById,
   saveVideo,
   saveSubtitle,
   checkThumbnailExists,
+  checkSubtitleExists,
+  readSubtitleContent,
   type VideoRecord,
-} from '../../packlets/video-store'
-import type { VideoFrontMatter } from '../../packlets/video-parser'
+} from "../../packlets/video-store";
+import { generateChaptersPrompt } from "../../packlets/chapters-prompt";
+import type { VideoFrontMatter } from "../../packlets/video-parser";
 
-export const Route = createFileRoute('/videos/$event/$slug')({
+export const Route = createFileRoute("/videos/$event/$slug")({
   component: EditPage,
-})
+});
 
 // ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
 
 function EditPage() {
-  const { event, slug } = Route.useParams()
-  const navigate = useNavigate()
-  const id = `${event}/${slug}`
+  const { event, slug } = Route.useParams();
+  const navigate = useNavigate();
+  const id = `${event}/${slug}`;
 
   const { data: liveVideos } = useLiveQuery((q) =>
     q.from({ v: videosCollection }).select(({ v }) => v),
-  )
-  const video = liveVideos?.find((v) => v.id === id) ?? getVideoById(id)
+  );
+  const video = liveVideos?.find((v) => v.id === id) ?? getVideoById(id);
 
   if (!video) {
     return (
       <main className="page-wrap px-4 py-12">
         <div className="island-shell rounded-2xl p-6 sm:p-8">
-          <p className="text-gray-500">Video not found. Did you open the folder?</p>
+          <p className="text-gray-500">
+            Video not found. Did you open the folder?
+          </p>
         </div>
       </main>
-    )
+    );
   }
 
   return (
     <main className="page-wrap px-4 py-12">
       <div className="island-shell rounded-2xl p-6 sm:p-8">
         <button
-        onClick={() => navigate({ to: '/videos', search: { event } })}
-        className="mb-6 text-sm text-blue-600 hover:underline"
-      >
-        ← Back to {event}
-      </button>
-      <h1 className="mb-1 text-2xl font-bold">{video.data.title}</h1>
-      <p className="mb-4 font-mono text-xs text-gray-400">
-        {event}/{slug}
-      </p>
+          onClick={() => navigate({ to: "/videos", search: { event } })}
+          className="mb-6 text-sm text-blue-600 hover:underline"
+        >
+          ← Back to {event}
+        </button>
+        <h1 className="mb-1 text-2xl font-bold">{video.data.title}</h1>
+        <p className="mb-4 font-mono text-xs text-gray-400">
+          {event}/{slug}
+        </p>
         <VideoEditForm video={video} id={id} />
       </div>
     </main>
-  )
+  );
 }
 
 // ---------------------------------------------------------------------------
 // Form
 // ---------------------------------------------------------------------------
 
-type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
+type SaveStatus = "idle" | "saving" | "saved" | "error";
 
 // Helper to check if all checklist items are green
 function areAllChecklistItemsGreen(
@@ -90,106 +106,112 @@ function areAllChecklistItemsGreen(
   chaptersYaml: string,
   subtitleEn: boolean,
   subtitleTh: boolean,
-  language: 'en' | 'th',
+  language: "en" | "th",
   thumbnailExists: boolean,
   thumbnailCheckDone: boolean,
 ): boolean {
   // If thumbnail check isn't done yet, we can't say all items are green
-  if (!thumbnailCheckDone) return false
+  if (!thumbnailCheckDone) return false;
 
   // Check title
-  if (!title.trim()) return false
+  if (!title.trim()) return false;
 
   // Check YouTube ID
-  const youtubeIdRegex = /^[a-zA-Z0-9_-]{11}$/
-  if (!youtube || !youtubeIdRegex.test(youtube)) return false
+  const youtubeIdRegex = /^[a-zA-Z0-9_-]{11}$/;
+  if (!youtube || !youtubeIdRegex.test(youtube)) return false;
 
   // Check description
-  if (!description.trim()) return false
+  if (!description.trim()) return false;
 
   // Check chapters
-  let chapters: Record<string, unknown> = {}
+  let chapters: Record<string, unknown> = {};
   if (chaptersYaml.trim()) {
     try {
-      const parsed = yaml.load(chaptersYaml)
-      chapters = typeof parsed === 'object' && !Array.isArray(parsed)
-        ? (parsed as Record<string, unknown>)
-        : {}
+      const parsed = yaml.load(chaptersYaml);
+      chapters =
+        typeof parsed === "object" && !Array.isArray(parsed)
+          ? (parsed as Record<string, unknown>)
+          : {};
     } catch {
-      return false
+      return false;
     }
   }
-  if (Object.keys(chapters).length === 0) return false
+  if (Object.keys(chapters).length === 0) return false;
 
   // Check subtitles based on language
-  const hasRequiredSubtitles = language === 'en' ? subtitleEn : subtitleTh
-  if (!hasRequiredSubtitles) return false
+  const hasRequiredSubtitles = language === "en" ? subtitleEn : subtitleTh;
+  if (!hasRequiredSubtitles) return false;
 
   // Check thumbnail
-  if (!thumbnailExists) return false
+  if (!thumbnailExists) return false;
 
-  return true
+  return true;
 }
 
 function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
-  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
-  const [saveError, setSaveError] = useState('')
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  const [saveError, setSaveError] = useState("");
   const [showYoutubeTitle, setShowYoutubeTitle] = useState(
     !!video.data.youtubeTitle,
-  )
+  );
   const [showEnglishDescription, setShowEnglishDescription] = useState(
     !!video.data.englishDescription,
-  )
-  const [showTeam, setShowTeam] = useState(!!video.data.team)
-  const [showBody, setShowBody] = useState(!!video.content.trim())
-  const [showChaptersModal, setShowChaptersModal] = useState(false)
-  const [thumbnailExists, setThumbnailExists] = useState(false)
-  const [isCheckingThumbnail, setIsCheckingThumbnail] = useState(true)
+  );
+  const [showTeam, setShowTeam] = useState(!!video.data.team);
+  const [showBody, setShowBody] = useState(!!video.content.trim());
+  const [showChaptersModal, setShowChaptersModal] = useState(false);
+  const [showGeneratePromptModal, setShowGeneratePromptModal] = useState(false);
+  const [thumbnailExists, setThumbnailExists] = useState(false);
+  const [isCheckingThumbnail, setIsCheckingThumbnail] = useState(true);
 
-  const youtubeTitle = video.data.youtubeTitle ?? ''
+  const youtubeTitle = video.data.youtubeTitle ?? "";
 
   const form = useForm({
     defaultValues: {
       title: video.data.title,
-      speaker: video.data.speaker ?? '',
-      tagline: video.data.tagline ?? '',
+      speaker: video.data.speaker ?? "",
+      tagline: video.data.tagline ?? "",
       youtubeTitle: youtubeTitle,
       youtube: video.data.youtube,
       type: video.data.type,
       language: video.data.language,
       managed: video.data.managed,
       publishedDate:
-        typeof video.data.published === 'string' ? video.data.published : '',
-      description: video.data.description ?? '',
-      englishDescription: video.data.englishDescription ?? '',
-      subtitleEn: video.data.subtitles?.includes('en') ?? false,
-      subtitleTh: video.data.subtitles?.includes('th') ?? false,
+        typeof video.data.published === "string" ? video.data.published : "",
+      description: video.data.description ?? "",
+      englishDescription: video.data.englishDescription ?? "",
+      subtitleEn: video.data.subtitles?.includes("en") ?? false,
+      subtitleTh: video.data.subtitles?.includes("th") ?? false,
       chaptersYaml: video.data.chapters
         ? yaml.dump(video.data.chapters, { lineWidth: -1 }).trimEnd()
-        : '',
+        : "",
       content: video.content,
-      team: video.data.team?.name ?? '',
+      team: video.data.team?.name ?? "",
     },
     onSubmit: async ({ value }) => {
-      setSaveStatus('saving')
-      setSaveError('')
+      setSaveStatus("saving");
+      setSaveError("");
       try {
-        let chapters: VideoFrontMatter['chapters']
+        let chapters: VideoFrontMatter["chapters"];
         if (value.chaptersYaml.trim()) {
-          const parsed = yaml.load(value.chaptersYaml)
-          if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed))
-            throw new Error('Chapters must be a YAML mapping')
-          chapters = parsed as VideoFrontMatter['chapters']
+          const parsed = yaml.load(value.chaptersYaml);
+          if (
+            typeof parsed !== "object" ||
+            parsed === null ||
+            Array.isArray(parsed)
+          )
+            throw new Error("Chapters must be a YAML mapping");
+          chapters = parsed as VideoFrontMatter["chapters"];
         }
 
-        const published: VideoFrontMatter['published'] = value.publishedDate
+        const published: VideoFrontMatter["published"] = value.publishedDate
           ? value.publishedDate
-          : false
+          : false;
 
         const subtitles = [
-          value.subtitleEn && 'en',
-          value.subtitleTh && 'th',
-        ].filter(Boolean) as string[]
+          value.subtitleEn && "en",
+          value.subtitleTh && "th",
+        ].filter(Boolean) as string[];
 
         // Build new data, explicitly removing fields when not set
         const newData: any = {
@@ -199,54 +221,55 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
           type: value.type,
           language: value.language,
           published,
-        }
+        };
 
         // Add optional fields if present
-        if (value.speaker) newData.speaker = value.speaker
-        if (value.type === 'pitch' && value.tagline) newData.tagline = value.tagline
+        if (value.speaker) newData.speaker = value.speaker;
+        if (value.type === "pitch" && value.tagline)
+          newData.tagline = value.tagline;
         if (showYoutubeTitle && value.youtubeTitle)
-          newData.youtubeTitle = value.youtubeTitle
-        if (value.description) newData.description = value.description
+          newData.youtubeTitle = value.youtubeTitle;
+        if (value.description) newData.description = value.description;
         if (showEnglishDescription && value.englishDescription)
-          newData.englishDescription = value.englishDescription
-        if (subtitles.length) newData.subtitles = subtitles
-        if (chapters) newData.chapters = chapters
-        if (showTeam && value.team) newData.team = { name: value.team }
+          newData.englishDescription = value.englishDescription;
+        if (subtitles.length) newData.subtitles = subtitles;
+        if (chapters) newData.chapters = chapters;
+        if (showTeam && value.team) newData.team = { name: value.team };
 
         // Preserve fields from original that aren't being edited
-        const data: VideoFrontMatter = { ...video.data }
+        const data: VideoFrontMatter = { ...video.data };
         // Override with new values
-        Object.assign(data, newData)
+        Object.assign(data, newData);
 
-        await saveVideo(id, data, value.content)
-        setSaveStatus('saved')
-        setTimeout(() => setSaveStatus('idle'), 2500)
+        await saveVideo(id, data, value.content);
+        setSaveStatus("saved");
+        setTimeout(() => setSaveStatus("idle"), 2500);
       } catch (e: any) {
-        setSaveStatus('error')
-        setSaveError(e?.message ?? String(e))
+        setSaveStatus("error");
+        setSaveError(e?.message ?? String(e));
       }
     },
-  })
+  });
 
   // Check if thumbnail exists (for publish date messaging)
   React.useEffect(() => {
     const checkThumbnail = async () => {
-      setIsCheckingThumbnail(true)
-      const exists = await checkThumbnailExists(id)
-      setThumbnailExists(exists)
-      setIsCheckingThumbnail(false)
-    }
-    checkThumbnail()
-  }, [id])
+      setIsCheckingThumbnail(true);
+      const exists = await checkThumbnailExists(id);
+      setThumbnailExists(exists);
+      setIsCheckingThumbnail(false);
+    };
+    checkThumbnail();
+  }, [id]);
 
-  const currentType = form.getFieldValue('type')
+  const currentType = form.getFieldValue("type");
 
   return (
     <>
       <form
         onSubmit={(e) => {
-          e.preventDefault()
-          form.handleSubmit()
+          e.preventDefault();
+          form.handleSubmit();
         }}
         className="space-y-5"
       >
@@ -259,7 +282,7 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
           <Field label="Title *">
             <form.Field
               name="title"
-              validators={{ onChange: z.string().min(1, 'Required') }}
+              validators={{ onChange: z.string().min(1, "Required") }}
               children={(f) => (
                 <>
                   <Input
@@ -277,7 +300,7 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
           <Field label="YouTube ID *">
             <form.Field
               name="youtube"
-              validators={{ onChange: z.string().min(1, 'Required') }}
+              validators={{ onChange: z.string().min(1, "Required") }}
               children={(f) => (
                 <>
                   <div className="flex gap-2">
@@ -289,17 +312,18 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
                       placeholder="e.g. dQw4w9WgXcQ"
                       className="flex-1"
                     />
-                    {f.state.value && /^[a-zA-Z0-9_-]{11}$/.test(f.state.value) && (
-                      <a
-                        href={`https://www.youtube.com/watch?v=${f.state.value}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center justify-center rounded-md border border-input bg-background px-2.5 py-1 text-sm hover:bg-accent hover:text-accent-foreground"
-                        title="View on YouTube"
-                      >
-                        <ExternalLink size={16} />
-                      </a>
-                    )}
+                    {f.state.value &&
+                      /^[a-zA-Z0-9_-]{11}$/.test(f.state.value) && (
+                        <a
+                          href={`https://www.youtube.com/watch?v=${f.state.value}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center justify-center rounded-md border border-input bg-background px-2.5 py-1 text-sm hover:bg-accent hover:text-accent-foreground"
+                          title="View on YouTube"
+                        >
+                          <ExternalLink size={16} />
+                        </a>
+                      )}
                   </div>
                   <FieldError errors={f.state.meta.errors} />
                 </>
@@ -340,7 +364,8 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
                     <Label className="text-sm">Managed</Label>
                   </div>
                   <p className="text-xs text-[var(--sea-ink-soft)]">
-                    When enabled, this video's metadata will be synced to YouTube
+                    When enabled, this video's metadata will be synced to
+                    YouTube
                   </p>
                 </div>
               )}
@@ -365,8 +390,8 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
                     <button
                       type="button"
                       onClick={() => {
-                        setShowYoutubeTitle(false)
-                        f.handleChange('')
+                        setShowYoutubeTitle(false);
+                        f.handleChange("");
                       }}
                       className="rounded p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
                       title="Remove YouTube Title"
@@ -386,19 +411,19 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
         )}
 
         {!showYoutubeTitle && (
-          <div className="rounded-lg border border-dashed p-4">
-            <button
-              type="button"
-              onClick={() => setShowYoutubeTitle(true)}
-              className="text-xs text-blue-600 hover:underline"
-            >
-              [+ Customize YouTube Title]
-            </button>
-          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setShowYoutubeTitle(true)}
+          >
+            <Plus size={14} className="mr-1" />
+            Customize YouTube Title
+          </Button>
         )}
 
         {/* ── 3. Pitch Info fieldset (Conditional) ── */}
-        {currentType === 'pitch' && (
+        {currentType === "pitch" && (
           <fieldset className="space-y-4 rounded-lg border p-4">
             <legend className="px-1 text-xs font-semibold uppercase tracking-wider text-gray-400">
               Pitch Info
@@ -434,8 +459,8 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
                       <button
                         type="button"
                         onClick={() => {
-                          setShowTeam(false)
-                          f.handleChange('')
+                          setShowTeam(false);
+                          f.handleChange("");
                         }}
                         className="rounded p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
                         title="Remove Team"
@@ -454,13 +479,15 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
             )}
 
             {!showTeam && (
-              <button
+              <Button
                 type="button"
+                variant="outline"
+                size="sm"
                 onClick={() => setShowTeam(true)}
-                className="text-xs text-blue-600 hover:underline"
               >
-                [+ Add Team]
-              </button>
+                <Plus size={14} className="mr-1" />
+                Add Team
+              </Button>
             )}
           </fieldset>
         )}
@@ -514,8 +541,8 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
                     <button
                       type="button"
                       onClick={() => {
-                        setShowEnglishDescription(false)
-                        f.handleChange('')
+                        setShowEnglishDescription(false);
+                        f.handleChange("");
                       }}
                       className="rounded p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
                       title="Remove English Description"
@@ -534,13 +561,15 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
           )}
 
           {!showEnglishDescription && (
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={() => setShowEnglishDescription(true)}
-              className="text-xs text-blue-600 hover:underline"
             >
-              [+ Add English Description]
-            </button>
+              <Plus size={14} className="mr-1" />
+              Add English Description
+            </Button>
           )}
         </fieldset>
 
@@ -554,14 +583,18 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
             name="chaptersYaml"
             children={(f) => {
               const parsedChapters = (() => {
-                if (!f.state.value.trim()) return {}
+                if (!f.state.value.trim()) return {};
                 try {
-                  const parsed = yaml.load(f.state.value)
-                  return (typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}) as Record<string, any>
+                  const parsed = yaml.load(f.state.value);
+                  return (
+                    typeof parsed === "object" && !Array.isArray(parsed)
+                      ? parsed
+                      : {}
+                  ) as Record<string, any>;
                 } catch {
-                  return {}
+                  return {};
                 }
-              })()
+              })();
 
               return (
                 <div className="space-y-3">
@@ -571,38 +604,69 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
                         <thead className="border-b bg-[var(--header-bg)]">
                           <tr>
                             <th className="px-3 py-2 text-left">Timestamp</th>
-                            <th className="px-3 py-2 text-left">Chapter Name</th>
+                            <th className="px-3 py-2 text-left">
+                              Chapter Name
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
-                          {Object.entries(parsedChapters).map(([time, name], idx) => (
-                            <tr key={idx} className="border-b">
-                              <td className="px-3 py-2 font-mono text-xs">{time}</td>
-                              <td className="px-3 py-2">
-                                {typeof name === 'string'
-                                  ? name
-                                  : typeof name === 'object' && name !== null
-                                    ? `${name.en || ''} / ${name.th || ''}`
-                                    : String(name)}
-                              </td>
-                            </tr>
-                          ))}
+                          {Object.entries(parsedChapters).map(
+                            ([time, name], idx) => (
+                              <tr key={idx} className="border-b">
+                                <td className="px-3 py-2 font-mono text-xs">
+                                  {time}
+                                </td>
+                                <td className="px-3 py-2">
+                                  {typeof name === "string"
+                                    ? name
+                                    : typeof name === "object" && name !== null
+                                      ? `${name.en || ""} / ${name.th || ""}`
+                                      : String(name)}
+                                </td>
+                              </tr>
+                            ),
+                          )}
                         </tbody>
                       </table>
                     </div>
                   )}
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowChaptersModal(true)
-                    }}
-                    className="text-xs text-blue-600 hover:underline"
-                  >
-                    {Object.keys(parsedChapters).length > 0 ? '[Edit Chapters]' : '[+ Add Chapters]'}
-                  </button>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setShowChaptersModal(true);
+                      }}
+                    >
+                      {Object.keys(parsedChapters).length > 0 ? (
+                        <>
+                          <Pencil size={14} className="mr-1" />
+                          Edit Chapters
+                        </>
+                      ) : (
+                        <>
+                          <Plus size={14} className="mr-1" />
+                          Add Chapters
+                        </>
+                      )}
+                    </Button>
+
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setShowGeneratePromptModal(true);
+                      }}
+                    >
+                      <Sparkles size={14} className="mr-1" />
+                      Generate Prompt
+                    </Button>
+                  </div>
                 </div>
-              )
+              );
             }}
           />
         </fieldset>
@@ -632,8 +696,8 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
                     <button
                       type="button"
                       onClick={() => {
-                        setShowBody(false)
-                        f.handleChange('')
+                        setShowBody(false);
+                        f.handleChange("");
                       }}
                       className="rounded p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
                       title="Remove Body"
@@ -654,15 +718,15 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
         )}
 
         {!showBody && (
-          <div className="rounded-lg border border-dashed p-4">
-            <button
-              type="button"
-              onClick={() => setShowBody(true)}
-              className="text-xs text-blue-600 hover:underline"
-            >
-              [+ Add Body]
-            </button>
-          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setShowBody(true)}
+          >
+            <Plus size={14} className="mr-1" />
+            Add Body
+          </Button>
         )}
 
         {/* ── 8. Readiness Checklist ── */}
@@ -676,12 +740,7 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
             subtitleEn: s.values.subtitleEn,
             subtitleTh: s.values.subtitleTh,
           })}
-          children={(vals) => (
-            <ReadinessChecklist
-              videoId={id}
-              {...vals}
-            />
-          )}
+          children={(vals) => <ReadinessChecklist videoId={id} {...vals} />}
         />
 
         {/* ── 9. Publish Date fieldset ── */}
@@ -712,7 +771,7 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
                 vals.language,
                 thumbnailExists,
                 !isCheckingThumbnail,
-              )
+              );
 
               return (
                 <form.Field
@@ -721,8 +780,9 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
                     onChange: z
                       .string()
                       .refine(
-                        (v) => v === '' || /^\d{4}-\d{2}-\d{2}(T[\d:.]+Z)?$/.test(v),
-                        'Enter a date: YYYY-MM-DD',
+                        (v) =>
+                          v === "" || /^\d{4}-\d{2}-\d{2}(T[\d:.]+Z)?$/.test(v),
+                        "Enter a date: YYYY-MM-DD",
                       ),
                   }}
                   children={(f) => (
@@ -732,7 +792,7 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
                       </label>
                       <div className="flex gap-2">
                         <DatePicker
-                          value={f.state.value.split('T')[0] || ''}
+                          value={f.state.value.split("T")[0] || ""}
                           onChange={(date) => f.handleChange(date)}
                           placeholder="Pick a date..."
                         />
@@ -741,7 +801,7 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
                             type="button"
                             variant="outline"
                             size="sm"
-                            onClick={() => f.handleChange('')}
+                            onClick={() => f.handleChange("")}
                             title="Clear publish date"
                           >
                             <Trash2 size={16} />
@@ -749,13 +809,15 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
                         )}
                       </div>
                       <p className="mt-1 text-xs text-[var(--sea-ink-soft)]">
-                        Leave empty for draft. Today publishes immediately, future dates schedule on YouTube.
+                        Leave empty for draft. Today publishes immediately,
+                        future dates schedule on YouTube.
                       </p>
 
                       {/* Publish date readiness messaging */}
                       {allChecklistGreen && !f.state.value && (
                         <p className="mt-2 text-xs text-gray-600">
-                          ✓ Ready to publish. Pick a date this video should be published.
+                          ✓ Ready to publish. Pick a date this video should be
+                          published.
                         </p>
                       )}
                       {allChecklistGreen && f.state.value && (
@@ -765,7 +827,8 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
                       )}
                       {!allChecklistGreen && f.state.value && (
                         <p className="mt-2 flex items-center gap-1 text-xs text-yellow-600">
-                          <AlertCircle size={14} /> Video metadata is not ready for publishing yet, please unset publish date
+                          <AlertCircle size={14} /> Video metadata is not ready
+                          for publishing yet, please unset publish date
                         </p>
                       )}
 
@@ -773,7 +836,7 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
                     </div>
                   )}
                 />
-              )
+              );
             }}
           />
         </fieldset>
@@ -793,14 +856,14 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
               </button>
             )}
           />
-          {saveStatus === 'saved' && (
+          {saveStatus === "saved" && (
             <span className="flex items-center gap-1 text-sm text-green-600">
               <CheckCircle size={14} /> Saved
             </span>
           )}
-          {saveStatus === 'error' && (
+          {saveStatus === "error" && (
             <span className="flex items-center gap-1 text-sm text-red-600">
-              <AlertCircle size={14} /> {saveError || 'Save failed'}
+              <AlertCircle size={14} /> {saveError || "Save failed"}
             </span>
           )}
         </div>
@@ -809,42 +872,54 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
       {/* ── Chapters Modal ── */}
       {showChaptersModal && (
         <ChaptersModal
-          initialValue={form.getFieldValue('chaptersYaml')}
+          initialValue={form.getFieldValue("chaptersYaml")}
           onClose={() => setShowChaptersModal(false)}
           onSave={async (yamlText) => {
             if (!yamlText.trim()) {
-              form.setFieldValue('chaptersYaml', '')
-              setShowChaptersModal(false)
-              return { ok: true }
+              form.setFieldValue("chaptersYaml", "");
+              setShowChaptersModal(false);
+              return { ok: true };
             }
 
             try {
-              const parsed = yaml.load(yamlText)
+              const parsed = yaml.load(yamlText);
               if (
-                typeof parsed !== 'object' ||
+                typeof parsed !== "object" ||
                 parsed === null ||
                 Array.isArray(parsed)
               ) {
                 return {
                   ok: false,
-                  reason: 'Invalid YAML — must be a mapping of timecode: title',
-                }
+                  reason: "Invalid YAML — must be a mapping of timecode: title",
+                };
               }
 
-              form.setFieldValue('chaptersYaml', yamlText)
-              setShowChaptersModal(false)
-              return { ok: true }
+              form.setFieldValue("chaptersYaml", yamlText);
+              setShowChaptersModal(false);
+              return { ok: true };
             } catch (e) {
               return {
                 ok: false,
                 reason: `YAML parsing error: ${String(e)}`,
-              }
+              };
             }
           }}
         />
       )}
+
+      {showGeneratePromptModal && (
+        <GeneratePromptModal
+          videoId={id}
+          videoLanguage={form.getFieldValue("language")}
+          onClose={() => setShowGeneratePromptModal(false)}
+          onEditChapters={() => {
+            setShowGeneratePromptModal(false);
+            setShowChaptersModal(true);
+          }}
+        />
+      )}
     </>
-  )
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -853,17 +928,23 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
 
 function TypeSelect({ form }: { form: any }) {
   const types = [
-    { value: 'talk', label: 'Talk', description: 'Regular event talk' },
-    { value: 'pitch', label: 'Pitch', description: 'Pitch presentation (shows tagline in title)' },
-    { value: 'archive', label: 'Archive', description: 'Archived recording' },
-  ]
+    { value: "talk", label: "Talk", description: "Regular event talk" },
+    {
+      value: "pitch",
+      label: "Pitch",
+      description: "Pitch presentation (shows tagline in title)",
+    },
+    { value: "archive", label: "Archive", description: "Archived recording" },
+  ];
 
   return (
     <form.Field
       name="type"
       children={(f: any) => (
         <div className="space-y-2">
-          <label className="text-xs font-medium text-[var(--sea-ink-soft)]">Type</label>
+          <label className="text-xs font-medium text-[var(--sea-ink-soft)]">
+            Type
+          </label>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             {types.map((type) => (
               <button
@@ -872,19 +953,21 @@ function TypeSelect({ form }: { form: any }) {
                 onClick={() => f.handleChange(type.value)}
                 className={`rounded-lg border-2 p-3 text-left transition ${
                   f.state.value === type.value
-                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                    : 'border-gray-200 hover:border-gray-300 dark:border-gray-700'
+                    ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                    : "border-gray-200 hover:border-gray-300 dark:border-gray-700"
                 }`}
               >
                 <div className="font-medium text-sm">{type.label}</div>
-                <div className="text-xs text-[var(--sea-ink-soft)]">{type.description}</div>
+                <div className="text-xs text-[var(--sea-ink-soft)]">
+                  {type.description}
+                </div>
               </button>
             ))}
           </div>
         </div>
       )}
     />
-  )
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -896,53 +979,55 @@ function ChaptersModal({
   onClose,
   onSave,
 }: {
-  initialValue: string
-  onClose: () => void
-  onSave: (yaml: string) => Promise<{ ok: true } | { ok: false; reason: string }>
+  initialValue: string;
+  onClose: () => void;
+  onSave: (
+    yaml: string,
+  ) => Promise<{ ok: true } | { ok: false; reason: string }>;
 }) {
-  const [chaptersYaml, setChaptersYaml] = useState(initialValue)
-  const [error, setError] = useState('')
-  const [isSaving, setIsSaving] = useState(false)
+  const [chaptersYaml, setChaptersYaml] = useState(initialValue);
+  const [error, setError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   const validationError = (() => {
-    if (!chaptersYaml.trim()) return null
+    if (!chaptersYaml.trim()) return null;
     try {
-      const parsed = yaml.load(chaptersYaml)
+      const parsed = yaml.load(chaptersYaml);
       if (
-        typeof parsed !== 'object' ||
+        typeof parsed !== "object" ||
         parsed === null ||
         Array.isArray(parsed)
       ) {
-        return 'Invalid YAML — must be a mapping of timecode: title'
+        return "Invalid YAML — must be a mapping of timecode: title";
       }
-      return null
+      return null;
     } catch {
-      return 'Invalid YAML syntax'
+      return "Invalid YAML syntax";
     }
-  })()
+  })();
 
   const handleSave = async () => {
     if (validationError) {
-      setError(validationError)
-      return
+      setError(validationError);
+      return;
     }
 
-    setIsSaving(true)
+    setIsSaving(true);
     try {
-      const result = await onSave(chaptersYaml)
+      const result = await onSave(chaptersYaml);
       if (result.ok) {
-        onClose()
+        onClose();
       } else {
-        setError(result.reason)
+        setError(result.reason);
       }
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
-  }
+  };
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Edit Chapters</DialogTitle>
         </DialogHeader>
@@ -954,16 +1039,28 @@ function ChaptersModal({
             </label>
             <Textarea
               rows={10}
-              className="font-mono text-xs"
+              className="font-mono text-xs max-h-80"
               value={chaptersYaml}
               onChange={(e) => {
-                setChaptersYaml(e.target.value)
-                setError('')
+                setChaptersYaml(e.target.value);
+                setError("");
               }}
-              placeholder={'\'0:00\': Introduction\n\'5:30\': Main content\n\'10:45\': Discussion'}
+              onPaste={(e) => {
+                const text = e.clipboardData.getData("text");
+                const match = text.match(/<chapters>([\s\S]*?)<\/chapters>/);
+                if (match) {
+                  e.preventDefault();
+                  setChaptersYaml(match[1].trim());
+                  setError("");
+                }
+              }}
+              placeholder={
+                "'0:00': Introduction\n'5:30': Main content\n'10:45': Discussion"
+              }
             />
             <p className="mt-1 text-xs text-[var(--sea-ink-soft)]">
-              Format: &apos;timestamp&apos;: Chapter Name (localized: name with {`{en: ..., th: ...}`})
+              Format: &apos;timestamp&apos;: Chapter Name (localized: name with{" "}
+              {`{en: ..., th: ...}`})
             </p>
           </div>
 
@@ -985,13 +1082,151 @@ function ChaptersModal({
                 Saving...
               </>
             ) : (
-              'Save'
+              "Save"
             )}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
+}
+
+// ---------------------------------------------------------------------------
+// GeneratePromptModal component
+// ---------------------------------------------------------------------------
+
+function GeneratePromptModal({
+  videoId,
+  videoLanguage,
+  onClose,
+  onEditChapters,
+}: {
+  videoId: string;
+  videoLanguage: "en" | "th";
+  onClose: () => void;
+  onEditChapters: () => void;
+}) {
+  const [status, setStatus] = useState<"checking" | "error" | "ready">(
+    "checking",
+  );
+  const [errorMessage, setErrorMessage] = useState("");
+  const [prompt, setPrompt] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  React.useEffect(() => {
+    const checkAndGenerate = async () => {
+      try {
+        const exists = await checkSubtitleExists(videoId, videoLanguage);
+        if (!exists) {
+          setStatus("error");
+          setErrorMessage(
+            `No ${videoLanguage.toUpperCase()} subtitle file found. Please upload a subtitle file first.`,
+          );
+          return;
+        }
+
+        const vttContent = await readSubtitleContent(videoId, videoLanguage);
+        const generatedPrompt = generateChaptersPrompt(
+          vttContent,
+          videoLanguage,
+        );
+        setPrompt(generatedPrompt);
+        setStatus("ready");
+      } catch (e) {
+        setStatus("error");
+        setErrorMessage(`Failed to generate prompt: ${String(e)}`);
+      }
+    };
+
+    checkAndGenerate();
+  }, [videoId, videoLanguage]);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(prompt);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleOpenRouter = () => {
+    window.open(
+      "https://openrouter.ai/chat?models=google/gemini-3.1-pro-preview",
+      "_blank",
+    );
+  };
+
+  return (
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Generate Chapters Prompt</DialogTitle>
+        </DialogHeader>
+
+        {status === "checking" && (
+          <div className="flex items-center gap-2 py-8 justify-center">
+            <Loader2 size={16} className="animate-spin" />
+            <span className="text-sm text-gray-500">
+              Checking subtitle file...
+            </span>
+          </div>
+        )}
+
+        {status === "error" && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-red-600">
+              <AlertCircle size={16} />
+              <span className="text-sm">{errorMessage}</span>
+            </div>
+            <p className="text-xs text-gray-500">
+              Go to the Subtitles section to upload a subtitle file first.
+            </p>
+          </div>
+        )}
+
+        {status === "ready" && (
+          <div className="space-y-3">
+            <div>
+              <label className="mb-2 block text-xs font-medium text-[var(--sea-ink-soft)]">
+                Generated Prompt
+              </label>
+              <Textarea
+                rows={12}
+                className="font-mono text-xs max-h-80"
+                value={prompt}
+                readOnly
+              />
+              <p className="mt-1 text-xs text-[var(--sea-ink-soft)]">
+                Copy this prompt and use it with an AI model to generate
+                chapters.
+              </p>
+            </div>
+
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={handleCopy}>
+                <Copy size={14} className="mr-1" />
+                {copied ? "Copied!" : "Copy"}
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleOpenRouter}>
+                <ExternalLink size={14} className="mr-1" />
+                Open Router
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          {status === "ready" && (
+            <Button onClick={onEditChapters}>
+              <Pencil size={14} className="mr-1" />
+              Edit Chapters
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -1002,24 +1237,26 @@ function SubtitleUploads({
   id,
   form,
 }: {
-  id: string
+  id: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  form: any
+  form: any;
 }) {
-  const enRef = useRef<HTMLInputElement>(null)
-  const thRef = useRef<HTMLInputElement>(null)
-  const [status, setStatus] = useState<Record<string, 'uploading' | 'done' | 'error'>>({})
+  const enRef = useRef<HTMLInputElement>(null);
+  const thRef = useRef<HTMLInputElement>(null);
+  const [status, setStatus] = useState<
+    Record<string, "uploading" | "done" | "error">
+  >({});
 
-  async function handleUpload(lang: 'en' | 'th', file: File) {
-    setStatus((s) => ({ ...s, [lang]: 'uploading' }))
+  async function handleUpload(lang: "en" | "th", file: File) {
+    setStatus((s) => ({ ...s, [lang]: "uploading" }));
     try {
-      await saveSubtitle(id, lang, file)
+      await saveSubtitle(id, lang, file);
       // Auto-check the corresponding subtitle checkbox
-      form.setFieldValue(lang === 'en' ? 'subtitleEn' : 'subtitleTh', true)
-      setStatus((s) => ({ ...s, [lang]: 'done' }))
+      form.setFieldValue(lang === "en" ? "subtitleEn" : "subtitleTh", true);
+      setStatus((s) => ({ ...s, [lang]: "done" }));
     } catch (e) {
-      console.error(e)
-      setStatus((s) => ({ ...s, [lang]: 'error' }))
+      console.error(e);
+      setStatus((s) => ({ ...s, [lang]: "error" }));
     }
   }
 
@@ -1027,10 +1264,10 @@ function SubtitleUploads({
     <div>
       <p className="mb-2 text-xs font-medium text-gray-600">Subtitles</p>
       <div className="space-y-2">
-        {(['en', 'th'] as const).map((lang) => {
-          const fieldName = lang === 'en' ? 'subtitleEn' : 'subtitleTh'
-          const ref = lang === 'en' ? enRef : thRef
-          const st = status[lang]
+        {(["en", "th"] as const).map((lang) => {
+          const fieldName = lang === "en" ? "subtitleEn" : "subtitleTh";
+          const ref = lang === "en" ? enRef : thRef;
+          const st = status[lang];
           return (
             <div key={lang} className="flex items-center gap-3">
               <form.Field
@@ -1049,21 +1286,21 @@ function SubtitleUploads({
               <button
                 type="button"
                 onClick={() => ref.current?.click()}
-                disabled={st === 'uploading'}
+                disabled={st === "uploading"}
                 className="flex items-center gap-1.5 rounded border px-2 py-1 text-xs hover:bg-gray-50 disabled:opacity-50"
               >
                 <Upload size={12} />
                 Upload .vtt
               </button>
-              {st === 'done' && (
+              {st === "done" && (
                 <span className="flex items-center gap-1 text-xs text-green-600">
                   <CheckCircle size={12} /> uploaded
                 </span>
               )}
-              {st === 'uploading' && (
+              {st === "uploading" && (
                 <Loader2 size={12} className="animate-spin text-gray-400" />
               )}
-              {st === 'error' && (
+              {st === "error" && (
                 <span className="text-xs text-red-500">failed</span>
               )}
               <input
@@ -1073,17 +1310,17 @@ function SubtitleUploads({
                 className="hidden"
                 data-testid={`subtitle-upload-${lang}`}
                 onChange={(e) => {
-                  const file = e.target.files?.[0]
-                  if (file) handleUpload(lang, file)
-                  e.target.value = ''
+                  const file = e.target.files?.[0];
+                  if (file) handleUpload(lang, file);
+                  e.target.value = "";
                 }}
               />
             </div>
-          )
+          );
         })}
       </div>
     </div>
-  )
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -1094,26 +1331,25 @@ function Field({
   label,
   children,
 }: {
-  label: string
-  children: React.ReactNode
+  label: string;
+  children: React.ReactNode;
 }) {
   return (
     <div className="space-y-1.5">
       <label className="text-xs block">{label}</label>
       {children}
     </div>
-  )
+  );
 }
 
 function FieldError({ errors }: { errors: any[] }) {
-  if (!errors.length) return null
+  if (!errors.length) return null;
   return (
     <p className="mt-1 text-xs text-red-500">
-      {errors.map((e) => e?.message ?? String(e)).join(', ')}
+      {errors.map((e) => e?.message ?? String(e)).join(", ")}
     </p>
-  )
+  );
 }
-
 
 /** LocalizableText input that can toggle between plain string and { en, th } */
 function LocalizableTextInput({
@@ -1121,29 +1357,33 @@ function LocalizableTextInput({
   onChange,
   label,
 }: {
-  value: string | { en: string; th: string }
-  onChange: (v: string | { en: string; th: string }) => void
-  label: string
+  value: string | { en: string; th: string };
+  onChange: (v: string | { en: string; th: string }) => void;
+  label: string;
 }) {
-  const isLocalized = typeof value === 'object'
+  const isLocalized = typeof value === "object";
 
   return (
     <div className="space-y-2">
-      {label && <Field label={label}><div /></Field>}
+      {label && (
+        <Field label={label}>
+          <div />
+        </Field>
+      )}
       <div className="flex items-center justify-between">
         <div />
         <button
           type="button"
           onClick={() => {
             if (isLocalized) {
-              onChange(value.en || '')
+              onChange(value.en || "");
             } else {
-              onChange({ en: value, th: value })
+              onChange({ en: value, th: value });
             }
           }}
           className="text-xs text-blue-600 hover:underline"
         >
-          {isLocalized ? 'Use plain text' : 'Make localized'}
+          {isLocalized ? "Use plain text" : "Make localized"}
         </button>
       </div>
       {isLocalized ? (
@@ -1168,11 +1408,8 @@ function LocalizableTextInput({
           </div>
         </div>
       ) : (
-        <Input
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-        />
+        <Input value={value} onChange={(e) => onChange(e.target.value)} />
       )}
     </div>
-  )
+  );
 }
