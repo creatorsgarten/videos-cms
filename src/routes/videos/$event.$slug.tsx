@@ -1027,7 +1027,7 @@ function ChaptersModal({
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Edit Chapters</DialogTitle>
         </DialogHeader>
@@ -1156,7 +1156,7 @@ function GeneratePromptModal({
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Generate Chapters Prompt</DialogTitle>
         </DialogHeader>
