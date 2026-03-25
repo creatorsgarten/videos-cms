@@ -130,7 +130,7 @@ importers:
         specifier: ^5.7.2
         version: 5.9.3
       visual-storyboard:
-        specifier: 0.3.0
+        specifier: ^0.3.0
         version: 0.3.0
       vite:
         specifier: ^7.3.1
