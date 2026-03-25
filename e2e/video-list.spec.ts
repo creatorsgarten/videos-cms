@@ -9,6 +9,7 @@ test.describe('event index', () => {
   })
 
   test('shows event index with event names', async ({ page }) => {
+    await expect(page).toHaveTitle('Videos CMS')
     await expect(page.getByRole('heading', { name: 'Videos CMS' })).toBeVisible()
     await expect(page.getByText('bkkjs22', { exact: false })).toBeVisible()
     await expect(page.getByText('creatorsgarten14', { exact: false })).toBeVisible()
