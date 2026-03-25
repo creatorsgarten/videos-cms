@@ -30,7 +30,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install
-      - run: pnpm exec playwright install --with-deps chromium
+      - uses: dtinth/setup-playwright-test-docker@main
       - run: pnpm test:e2e
       - uses: actions/upload-artifact@v4
         if: failure()
