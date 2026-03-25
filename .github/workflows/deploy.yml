@@ -79,18 +79,18 @@ jobs:
     needs: [build, e2e]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4.1.3
         with:
           name: github-pages-site
           path: site
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4.1.3
         if: always()
         with:
           name: playwright-report
           path: site/playwright-report
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4.1.3
         if: always()
         with:
           name: test-storyboards
