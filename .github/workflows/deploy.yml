@@ -33,12 +33,75 @@ jobs:
 
       - run: cp dist/client/404.html dist/client/index.html
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: github-pages-site
+          path: dist/client
+          retention-days: 7
+
+  e2e:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: mkdir -p playwright-report test-storyboards
+
+      - run: pnpm install
+
+      - run: pnpm exec playwright install --with-deps chromium
+
+      - run: pnpm test:e2e
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-storyboards
+          path: test-storyboards/
+          retention-days: 7
+
+  package-pages:
+    if: always()
+    needs: [build, e2e]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: github-pages-site
+          path: site
+
+      - uses: actions/download-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: site/playwright-report
+
+      - uses: actions/download-artifact@v4
+        if: always()
+        with:
+          name: test-storyboards
+          path: site/test-storyboards
+
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist/client
+          path: site
 
   deploy:
-    needs: build
+    needs: package-pages
     runs-on: ubuntu-latest
     environment:
       name: github-pages

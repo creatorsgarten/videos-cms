@@ -1,13 +1,16 @@
 import { test, expect } from '@playwright/test'
 import { injectDirectoryHandle } from './helpers/fs-mock'
 import fixtures from './fixtures/videos.json' with { type: 'json' }
+import { storyboard } from './support'
 
 test.describe('video edit form', () => {
   test.beforeEach(async ({ page }) => {
     await injectDirectoryHandle(page, fixtures)
     await page.goto('videos/bkkjs22/make-pull-requests-great-again')
     // Wait for the form to be ready
-    await expect(page.getByRole('button', { name: 'Save' })).toBeVisible()
+    const saveButton = page.getByRole('button', { name: 'Save' })
+    await expect(saveButton).toBeVisible()
+    await storyboard.capture('Video edit form ready', saveButton)
   })
 
   test('shows pre-filled form fields', async ({ page }) => {
@@ -32,7 +35,9 @@ test.describe('video edit form', () => {
     await titleInput.fill('Updated Title')
 
     await page.getByRole('button', { name: 'Save' }).click()
-    await expect(page.getByText('Saved')).toBeVisible()
+    const savedMessage = page.getByText('Saved')
+    await expect(savedMessage).toBeVisible()
+    await storyboard.capture('Save confirmation shown', savedMessage)
 
     // Verify the file was written with the new title
     const writes = await page.evaluate(() => (window as any).__writes ?? {})

@@ -129,6 +129,9 @@ importers:
       typescript:
         specifier: ^5.7.2
         version: 5.9.3
+      visual-storyboard:
+        specifier: 0.3.0
+        version: 0.3.0
       vite:
         specifier: ^7.3.1
         version: 7.3.1(@types/node@22.19.15)(jiti@2.6.1)(lightningcss@1.31.1)(tsx@4.21.0)
@@ -3052,6 +3055,9 @@ packages:
   vary@1.1.2:
     resolution: {integrity: sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg==}
     engines: {node: '>= 0.8'}
+
+  visual-storyboard@0.3.0:
+    resolution: {integrity: sha512-e0cFuMwC38aBKs3dq7I0lcbW8mDxB+zvOA3Hb/fCFZMJFYJGnEqH+Yltyqj2ziUMW/AXSNZ79hq/Rid0ZqtlNQ==}
 
   vite-node@3.2.4:
     resolution: {integrity: sha512-EbKSKh+bh1E1IFxeO0pg1n4dvoOTt0UDiXMd/qn++r98+jPO1xtJilvXldeuQ8giIB5IkpjCgMleHMNEsGH6pg==}
@@ -6108,6 +6114,8 @@ snapshots:
   validate-npm-package-name@7.0.2: {}
 
   vary@1.1.2: {}
+
+  visual-storyboard@0.3.0: {}
 
   vite-node@3.2.4(@types/node@22.19.15)(jiti@2.6.1)(lightningcss@1.31.1)(tsx@4.21.0):
     dependencies:

@@ -58,6 +58,7 @@
     "oxlint": "^1.55.0",
     "prettier": "^3.8.1",
     "typescript": "^5.7.2",
+    "visual-storyboard": "0.3.0",
     "vite": "^7.3.1",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^3.0.5"

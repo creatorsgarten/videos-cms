@@ -13,4 +13,5 @@ __unconfig*
 todos.json
 playwright-report/
 test-results/
+test-storyboards/
 .claude/settings.local.json
