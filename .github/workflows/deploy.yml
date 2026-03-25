@@ -55,7 +55,7 @@ jobs:
 
       - run: pnpm install
 
-      - run: pnpm exec playwright install --with-deps chromium
+      - uses: dtinth/setup-playwright-test-docker@main
 
       - run: pnpm test:e2e
         continue-on-error: true
