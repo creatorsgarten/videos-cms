@@ -41,6 +41,7 @@ import {
   type VideoRecord,
 } from "../../packlets/video-store";
 import { generateChaptersPrompt } from "../../packlets/chapters-prompt";
+import { generateDescriptionPrompt } from "../../packlets/description-prompt";
 import type { VideoFrontMatter } from "../../packlets/video-parser";
 
 export const Route = createFileRoute("/videos/$event/$slug")({
@@ -161,6 +162,7 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
   const [showBody, setShowBody] = useState(!!video.content.trim());
   const [showChaptersModal, setShowChaptersModal] = useState(false);
   const [showGeneratePromptModal, setShowGeneratePromptModal] = useState(false);
+  const [showGenerateDescriptionPromptModal, setShowGenerateDescriptionPromptModal] = useState(false);
   const [thumbnailExists, setThumbnailExists] = useState(false);
   const [isCheckingThumbnail, setIsCheckingThumbnail] = useState(true);
 
@@ -516,18 +518,40 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
             />
           </Field>
 
-          <Field label="Description">
-            <form.Field
-              name="description"
-              children={(f) => (
+          <form.Field
+            name="description"
+            children={(f) => (
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-medium text-[var(--sea-ink-soft)]">
+                    Description
+                  </label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowGenerateDescriptionPromptModal(true)}
+                  >
+                    <Sparkles size={14} className="mr-1" />
+                    Generate Prompt
+                  </Button>
+                </div>
                 <Textarea
                   rows={4}
                   value={f.state.value}
                   onChange={(e) => f.handleChange(e.target.value)}
+                  onPaste={(e) => {
+                    const text = e.clipboardData.getData("text");
+                    const match = text.match(/<description>([\s\S]*?)<\/description>/);
+                    if (match) {
+                      e.preventDefault();
+                      f.handleChange(match[1].trim());
+                    }
+                  }}
                 />
-              )}
-            />
-          </Field>
+              </div>
+            )}
+          />
 
           {showEnglishDescription && (
             <form.Field
@@ -918,6 +942,14 @@ function VideoEditForm({ video, id }: { video: VideoRecord; id: string }) {
           }}
         />
       )}
+
+      {showGenerateDescriptionPromptModal && (
+        <GenerateDescriptionPromptModal
+          videoId={id}
+          videoLanguage={form.getFieldValue("language")}
+          onClose={() => setShowGenerateDescriptionPromptModal(false)}
+        />
+      )}
     </>
   );
 }
@@ -1223,6 +1255,136 @@ function GeneratePromptModal({
               Edit Chapters
             </Button>
           )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// GenerateDescriptionPromptModal component
+// ---------------------------------------------------------------------------
+
+function GenerateDescriptionPromptModal({
+  videoId,
+  videoLanguage,
+  onClose,
+}: {
+  videoId: string;
+  videoLanguage: "en" | "th";
+  onClose: () => void;
+}) {
+  const [status, setStatus] = useState<"checking" | "error" | "ready">(
+    "checking",
+  );
+  const [errorMessage, setErrorMessage] = useState("");
+  const [prompt, setPrompt] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  React.useEffect(() => {
+    const checkAndGenerate = async () => {
+      try {
+        const exists = await checkSubtitleExists(videoId, videoLanguage);
+        if (!exists) {
+          setStatus("error");
+          setErrorMessage(
+            `No ${videoLanguage.toUpperCase()} subtitle file found. Please upload a subtitle file first.`,
+          );
+          return;
+        }
+
+        const vttContent = await readSubtitleContent(videoId, videoLanguage);
+        const generatedPrompt = generateDescriptionPrompt(
+          vttContent,
+          videoLanguage,
+        );
+        setPrompt(generatedPrompt);
+        setStatus("ready");
+      } catch (e) {
+        setStatus("error");
+        setErrorMessage(`Failed to generate prompt: ${String(e)}`);
+      }
+    };
+
+    checkAndGenerate();
+  }, [videoId, videoLanguage]);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(prompt);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleOpenRouter = () => {
+    window.open(
+      "https://openrouter.ai/chat?models=google/gemini-3.1-pro-preview",
+      "_blank",
+    );
+  };
+
+  return (
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Generate Description Prompt</DialogTitle>
+        </DialogHeader>
+
+        {status === "checking" && (
+          <div className="flex items-center gap-2 py-8 justify-center">
+            <Loader2 size={16} className="animate-spin" />
+            <span className="text-sm text-gray-500">
+              Checking subtitle file...
+            </span>
+          </div>
+        )}
+
+        {status === "error" && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-red-600">
+              <AlertCircle size={16} />
+              <span className="text-sm">{errorMessage}</span>
+            </div>
+            <p className="text-xs text-gray-500">
+              Go to the Subtitles section to upload a subtitle file first.
+            </p>
+          </div>
+        )}
+
+        {status === "ready" && (
+          <div className="space-y-3">
+            <div>
+              <label className="mb-2 block text-xs font-medium text-[var(--sea-ink-soft)]">
+                Generated Prompt
+              </label>
+              <Textarea
+                rows={12}
+                className="font-mono text-xs max-h-80"
+                value={prompt}
+                readOnly
+              />
+              <p className="mt-1 text-xs text-[var(--sea-ink-soft)]">
+                Copy this prompt and use it with an AI model to generate a
+                description. Paste the result in the Description field below.
+              </p>
+            </div>
+
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={handleCopy}>
+                <Copy size={14} className="mr-1" />
+                {copied ? "Copied!" : "Copy"}
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleOpenRouter}>
+                <ExternalLink size={14} className="mr-1" />
+                Open Router
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
