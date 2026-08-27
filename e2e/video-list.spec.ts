@@ -34,6 +34,52 @@ test.describe('event index', () => {
   })
 })
 
+test.describe('create event', () => {
+  test.beforeEach(async ({ page }) => {
+    await injectDirectoryHandle(page, fixtures)
+    await page.goto('/')
+    await expect(page.getByText('bkkjs22')).toBeVisible()
+  })
+
+  test('creates a new event folder and can add a video to it', async ({
+    page,
+  }) => {
+    await page.getByRole('button', { name: 'Create event' }).click()
+
+    const dialog = page.getByRole('dialog')
+    await dialog.getByPlaceholder('e.g. wwdc-2026').fill('workshop-2026')
+    await dialog.getByRole('button', { name: 'Create event' }).click()
+
+    // Lands on the filtered list for the new (empty) event
+    await expect(page).toHaveURL(/event=workshop-2026/)
+    await expect(page.getByText(/No videos in/)).toBeVisible()
+
+    // Add a video into the freshly created event
+    await page.getByRole('button', { name: 'Add video' }).click()
+    const addDialog = page.getByRole('dialog')
+    await addDialog.getByPlaceholder(/My Awesome Talk/).fill('Intro to Testing')
+    await addDialog.getByPlaceholder(/my-talk-title/).fill('intro-to-testing')
+    await addDialog.getByPlaceholder(/dQw4w9WgXcQ/).fill('dQw4w9WgXcQ')
+    await addDialog.getByRole('button', { name: 'Create Video' }).click()
+
+    await expect(page).toHaveURL(
+      /\/videos\/workshop-2026\/intro-to-testing/,
+    )
+
+    const writes = await page.evaluate(() => (window as any).__writes ?? {})
+    expect(writes['intro-to-testing.md']).toContain('title: Intro to Testing')
+    expect(writes['intro-to-testing.md']).toContain('youtube: dQw4w9WgXcQ')
+  })
+
+  test('rejects an event name with spaces', async ({ page }) => {
+    await page.getByRole('button', { name: 'Create event' }).click()
+    const dialog = page.getByRole('dialog')
+    await dialog.getByPlaceholder('e.g. wwdc-2026').fill('bad name')
+    await dialog.getByRole('button', { name: 'Create event' }).click()
+    await expect(dialog.getByText(/cannot contain spaces/)).toBeVisible()
+  })
+})
+
 test.describe('video list', () => {
   test.beforeEach(async ({ page }) => {
     await injectDirectoryHandle(page, fixtures)

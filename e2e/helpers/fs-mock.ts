@@ -11,18 +11,21 @@ export async function injectDirectoryHandle(
   files: FileTree,
 ): Promise<void> {
   await page.addInitScript((files: FileTree) => {
-    function makeFileHandle(name: string, contents: string): FileSystemFileHandle {
+    // node shape: { kind: 'file', contents: string } | { kind: 'directory', entries: Record<string, node> }
+    function makeFileHandle(name: string, node: any): FileSystemFileHandle {
       return {
         kind: 'file',
         name,
         queryPermission: async () => 'granted' as PermissionState,
         requestPermission: async () => 'granted' as PermissionState,
-        getFile: async () => new File([contents], name, { type: 'text/plain' }),
+        getFile: async () =>
+          new File([node.contents], name, { type: 'text/plain' }),
         createWritable: async () => {
           let data = ''
           return {
             write: async (chunk: string) => { data += chunk },
             close: async () => {
+              node.contents = data
               ;(window as any).__writes ??= {}
               ;(window as any).__writes[name] = data
             },
@@ -42,20 +45,28 @@ export async function injectDirectoryHandle(
         name,
         queryPermission: async () => 'granted' as PermissionState,
         requestPermission: async () => 'granted' as PermissionState,
-        getDirectoryHandle: async (child: string) => {
-          const node = entries[child]
+        getDirectoryHandle: async (
+          child: string,
+          options?: { create?: boolean },
+        ) => {
+          let node = entries[child]
+          if (!node && options?.create) {
+            node = entries[child] = { kind: 'directory', entries: {} }
+          }
           if (!node || node.kind !== 'directory') throw new Error(`Not a directory: ${child}`)
           return makeDirectoryHandle(child, node.entries)
         },
         getFileHandle: async (child: string, options?: { create?: boolean }) => {
-          const node = entries[child]
-          if (node?.kind === 'file') return makeFileHandle(child, node.contents)
-          if (options?.create) return makeFileHandle(child, '')
+          let node = entries[child]
+          if (!node && options?.create) {
+            node = entries[child] = { kind: 'file', contents: '' }
+          }
+          if (node?.kind === 'file') return makeFileHandle(child, node)
           throw new Error(`Not a file: ${child}`)
         },
         entries: async function* () {
           for (const [k, v] of Object.entries(entries) as any) {
-            if (v.kind === 'file') yield [k, makeFileHandle(k, v.contents)]
+            if (v.kind === 'file') yield [k, makeFileHandle(k, v)]
             else yield [k, makeDirectoryHandle(k, v.entries)]
           }
         },
