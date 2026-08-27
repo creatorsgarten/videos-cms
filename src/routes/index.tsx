@@ -1,16 +1,17 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useLiveQuery } from '@tanstack/react-db'
 import { useEffect, useRef, useState } from 'react'
-import { FolderOpen, RefreshCw, AlertCircle, ChevronRight, Info } from 'lucide-react'
+import { FolderOpen, RefreshCw, AlertCircle, ChevronRight, Info, Plus } from 'lucide-react'
 import { Button } from '#/components/ui/button'
 import { ListItem } from '#/components/ui/list-item'
 import { Alert, AlertDescription } from '#/components/ui/alert'
+import { CreateEventModal } from '#/components/create-event-modal'
 import {
   openDirectory,
   loadPersistedDirectory,
   ensurePermission,
 } from '../packlets/fs'
-import { scanVideos, videosCollection } from '../packlets/video-store'
+import { scanVideos, videosCollection, getKnownEvents } from '../packlets/video-store'
 
 export const Route = createFileRoute('/')({ component: HomePage })
 
@@ -22,8 +23,10 @@ type Status =
   | { type: 'error'; message: string }
 
 function HomePage() {
+  const navigate = useNavigate()
   const [dirName, setDirName] = useState<string | null>(null)
   const [status, setStatus] = useState<Status>({ type: 'idle' })
+  const [showCreateEvent, setShowCreateEvent] = useState(false)
   const initialized = useRef(false)
 
   const { data: videos } = useLiveQuery((q) =>
@@ -99,6 +102,15 @@ function HomePage() {
     return acc
   }, {} as Record<string, EventStats>)
 
+  // Surface event folders that exist on disk but have no videos yet
+  if (status.type === 'ready') {
+    for (const event of getKnownEvents()) {
+      if (!grouped[event]) {
+        grouped[event] = { total: 0, draft: 0, lastPublishedDate: null }
+      }
+    }
+  }
+
   return (
     <main className="page-wrap px-4 py-12">
       <div className="island-shell rounded-2xl p-6 sm:p-8">
@@ -124,6 +136,16 @@ function HomePage() {
                 className={status.type === 'scanning' ? 'animate-spin' : ''}
               />
               {status.type === 'scanning' ? `${status.count} files…` : 'Refresh'}
+            </Button>
+          )}
+          {status.type === 'ready' && (
+            <Button
+              onClick={() => setShowCreateEvent(true)}
+              variant="outline"
+              size="sm"
+            >
+              <Plus size={14} />
+              Create event
             </Button>
           )}
           <Button
@@ -158,7 +180,7 @@ function HomePage() {
           <Alert className="mb-6">
             <Info className="h-4 w-4" />
             <AlertDescription>
-              <span className="font-medium">How to use:</span> Choose an event below to manage its videos. You can edit metadata, upload thumbnails, add new videos, and more. Adding new events is not yet supported.
+              <span className="font-medium">How to use:</span> Choose an event below to manage its videos. You can edit metadata, upload thumbnails, add new videos, and more. Use <span className="font-medium">Create event</span> above to add a new event folder.
             </AlertDescription>
           </Alert>
 
@@ -223,6 +245,14 @@ function HomePage() {
         </>
       )}
       </div>
+
+      <CreateEventModal
+        isOpen={showCreateEvent}
+        onClose={() => setShowCreateEvent(false)}
+        onCreated={(event) => {
+          navigate({ to: '/videos', search: { event } })
+        }}
+      />
     </main>
   )
 }

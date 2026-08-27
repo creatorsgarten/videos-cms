@@ -26,6 +26,10 @@ export const videosCollection = createCollection(
 // Track current IDs so we can clear on rescan (TanStack DB has no getAll API)
 let currentIds = new Set<string>();
 
+// Every directory under data/videos/, including ones with no .md files yet.
+// Lets freshly created (empty) events show up in the UI.
+let knownEvents = new Set<string>();
+
 // Store rootHandle at module level (set during scanVideos)
 let rootHandle: FileSystemDirectoryHandle | null = null;
 
@@ -45,6 +49,7 @@ export async function scanVideos(
 ): Promise<void> {
   rootHandle = newRootHandle;
   const newIds = new Set<string>();
+  const newKnownEvents = new Set<string>();
   const newFileHandles = new Map<string, FileSystemFileHandle>();
   const newEventDirHandles = new Map<string, FileSystemDirectoryHandle>();
 
@@ -54,6 +59,7 @@ export async function scanVideos(
 
   for await (const [event, eventHandle] of videosHandle.entries()) {
     if (eventHandle.kind !== "directory") continue;
+    newKnownEvents.add(event);
 
     for await (const [filename, fileHandle] of eventHandle.entries()) {
       if (fileHandle.kind !== "file" || !filename.endsWith(".md")) continue;
@@ -97,6 +103,7 @@ export async function scanVideos(
   }
 
   currentIds = newIds;
+  knownEvents = newKnownEvents;
   // Swap in the new handle maps (keep old entries not in newIds removed)
   for (const id of fileHandles.keys()) {
     if (!newIds.has(id)) fileHandles.delete(id);
@@ -218,13 +225,39 @@ export async function createVideo(
 // Known Events
 // ---------------------------------------------------------------------------
 
+/** All event directories under data/videos/, including ones with no videos yet. */
 export function getKnownEvents(): string[] {
-  const events = new Set<string>();
-  for (const id of currentIds) {
-    const [event] = id.split("/");
-    events.add(event);
+  return Array.from(knownEvents).sort();
+}
+
+/** Reject anything that isn't a plain single directory name. Deliberately
+ *  permissive about the naming convention — we can't see the real repo here. */
+export function validateEventName(name: string): string | null {
+  const trimmed = name.trim();
+  if (!trimmed) return "Event name is required";
+  if (/[/\\]/.test(trimmed)) return "Event name cannot contain slashes";
+  if (trimmed === "." || trimmed === "..") return "Invalid event name";
+  if (/\s/.test(trimmed)) return "Event name cannot contain spaces";
+  return null;
+}
+
+/** Create a new (empty) event directory under data/videos/ and rescan. */
+export async function createEvent(name: string): Promise<void> {
+  if (!rootHandle)
+    throw new Error("Root handle not set. Call scanVideos first.");
+
+  const trimmed = name.trim();
+  const err = validateEventName(trimmed);
+  if (err) throw new Error(err);
+  if (knownEvents.has(trimmed)) {
+    throw new Error(`Event already exists: ${trimmed}`);
   }
-  return Array.from(events).sort();
+
+  const dataHandle = await rootHandle.getDirectoryHandle("data");
+  const videosHandle = await dataHandle.getDirectoryHandle("videos");
+  await videosHandle.getDirectoryHandle(trimmed, { create: true });
+
+  await scanVideos(rootHandle);
 }
 
 // ---------------------------------------------------------------------------

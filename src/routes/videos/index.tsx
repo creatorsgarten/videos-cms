@@ -109,6 +109,13 @@ function VideoListPage() {
           className="mb-6"
         />
 
+      {eventFilter && filtered.length === 0 && (
+        <div className="rounded-lg border-2 border-dashed p-12 text-center text-sm text-gray-400">
+          No videos in <span className="font-mono">{eventFilter}</span> yet.
+          Click <span className="font-medium">Add video</span> to create one.
+        </div>
+      )}
+
       <div className="space-y-6">
         {Object.entries(grouped)
           .sort(([a], [b]) => b.localeCompare(a))
